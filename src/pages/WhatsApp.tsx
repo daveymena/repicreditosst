@@ -30,7 +30,7 @@ const WhatsApp = () => {
         const checkStatus = async () => {
             try {
                 // NOTA: Asegúrate de que el backend esté corriendo en puerto 3001
-                const res = await fetch('http://localhost:3001/api/whatsapp/status');
+                const res = await fetch('/api/whatsapp/status');
                 const data = await res.json();
 
                 setConnectionStatus(data.status);
@@ -55,7 +55,7 @@ const WhatsApp = () => {
 
     const handleDisconnect = async () => {
         try {
-            await fetch('http://localhost:3001/api/whatsapp/disconnect', { method: 'POST' });
+            await fetch('/api/whatsapp/disconnect', { method: 'POST' });
             setIsConnected(false);
             setQrCode("");
             toast.info("Solicitud de desconexión enviada");
