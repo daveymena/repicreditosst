@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/components/auth/AuthContext";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
@@ -6,6 +9,17 @@ import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
 
 const Index = () => {
+  const { session, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && session) {
+      navigate("/dashboard");
+    }
+  }, [session, loading, navigate]);
+
+  if (loading) return null;
+
   return (
     <div className="min-h-screen">
       <Navbar />
