@@ -1,17 +1,17 @@
 # --- Stage 1: Build Frontend ---
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY package*.json ./
 RUN npm ci
 COPY . .
 # En Easypanel, las variables de entorno se inyectan en tiempo de ejecución
-# Pero para el build de Vite necesitamos definirlas si son "baked in"
+# Pero para el build de Vite necesitamos definirlas si son "baked in".
 # Usaremos un placeholder o variables genéricas
 ENV VITE_API_URL=/api
 RUN npm run build
 
 # --- Stage 2: Build Backend ---
-FROM node:18-alpine AS backend-builder
+FROM node:20-alpine AS backend-builder
 WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm ci
@@ -19,10 +19,10 @@ COPY backend/ .
 RUN npx tsc
 
 # --- Stage 3: Production Runner ---
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
 
-# Instalar dependencias necesarias para Chrome (si fuera necesario por alguna lib extra)
+# Instalar dependencias necesarias para Chrome/Puppeteer (si se require en futuro)
 # RUN apk add --no-cache chromium
 
 # Copiar backend construído
