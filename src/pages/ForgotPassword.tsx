@@ -19,8 +19,8 @@ const ForgotPassword = () => {
         setIsLoading(true);
 
         try {
-            // Usar la URL en español para que coincida con Supabase
-            const redirectUrl = `${window.location.origin}/restablecer-contraseña`;
+            // Usar la URL en español (segura sin ñ) para que coincida con Supabase
+            const redirectUrl = `${window.location.origin}/restablecer-clave`;
 
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: redirectUrl,
