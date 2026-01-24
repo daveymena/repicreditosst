@@ -134,6 +134,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             >
               RapiCréditos
             </motion.span>
+            {isSidebarOpen && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-[10px] text-muted-foreground font-medium tracking-wide mt-0.5"
+              >
+                Gestión Inteligente con IA
+              </motion.p>
+            )}
           </Link>
 
           {!isMobile && (

@@ -33,35 +33,38 @@ export class AIService {
             return `Hola ${context.clientName}, recordamos tu pago de $${context.amount} para el día ${context.dueDate}.`;
         }
 
-        const prompt = `
-            Actúa como un asistente profesional de cobranzas para "RapiCréditos".
-            Genera un mensaje corto, amable pero firme para enviar por WhatsApp.
-            
-            Datos del cliente:
-            - Nombre: ${context.clientName}
-            - Monto: $${context.amount}
-            - Fecha de vencimiento: ${context.dueDate}
-            ${context.daysOverdue ? `- Días de mora: ${context.daysOverdue}` : '- Estado: A tiempo (recordatorio preventivo)'}
-
-            Instrucciones:
-            1. Usa un tono empático pero profesional.
-            2. Menciona la importancia de mantener un buen historial crediticio.
-            3. Sé breve (máximo 50 palabras).
-            4. No uses saludos genéricos como "Estimado cliente", usa su nombre.
-            5. Incluye emojis sutiles (💰, 📅, ✨).
-        `;
+        // Prompt ultra-corto para velocidad
+        const prompt = `Mensaje de cobro amable para WhatsApp. Cliente: ${context.clientName}, Monto: $${context.amount}, Vence: ${context.dueDate}. Usa emojis 💰📅. Max 40 palabras.`;
 
         try {
             const response = await axios.post(`${OLLAMA_URL}/api/generate`, {
                 model: OLLAMA_MODEL,
                 prompt: prompt,
-                stream: false
+                stream: false,
+                options: {
+                    num_predict: 80,
+                    temperature: 0.7
+                }
+            }, {
+                timeout: 15000  // 15 seg timeout
             });
 
-            return response.data.response.trim();
-        } catch (error) {
-            console.error('Error conectando con Ollama:', error);
-            return `Hola ${context.clientName}, tienes un pago pendiente de $${context.amount} que vence el ${context.dueDate}. 📅`;
+            return response.data.response.trim() || `Hola ${context.clientName} 👋, te recordamos tu pago de $${context.amount} que vence el ${context.dueDate}. ¡Gracias! 💰`;
+        } catch (error: any) {
+            console.error('⚠️ Ollama timeout:', error.message);
+            // Mensaje con datos de pago
+            return `Hola ${context.clientName} 👋
+
+Te recordamos amablemente tu pago de *$${context.amount.toLocaleString()}* que vence el ${context.dueDate}. 📅
+
+💳 *Opciones de Pago:*
+• Nequi: 313-617-4267
+• Bancolombia: 123-456789-01
+• Daviplata: 313-617-4267
+
+¡Gracias por tu confianza! 💚
+
+_RapiCréditos Pro_`;
         }
     }
 

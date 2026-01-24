@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { WhatsAppService } from './services/whatsappService';
 import { SchedulerService } from './services/schedulerService';
+import { AIService } from './services/aiService';
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.post('/api/whatsapp/disconnect', async (req, res) => {
 });
 
 app.post('/api/test-message', async (req, res) => {
+    // ... (existente)
     const phone = req.body.phone || req.query.phone;
     const message = req.body.message || req.query.message;
 
@@ -56,6 +58,48 @@ app.post('/api/test-message', async (req, res) => {
         if (sent) res.json({ success: true, message: 'Mensaje enviado a cola' });
         else res.status(500).json({ error: 'No se pudo enviar. Verifica que WhatsApp esté conectado.' });
     } catch (e) {
+        res.status(500).json({ error: String(e) });
+    }
+});
+
+// Endpoint para probar FLUJO COMPLETO (Simulando DB)
+app.post('/api/test-ai-flow', async (req, res) => {
+    const { phone } = req.body;
+    // Fallback query para pruebas fáciles
+    const targetPhone = phone || req.query.phone;
+
+    if (!targetPhone) return res.status(400).json({ error: 'Falta teléfono' });
+
+    try {
+        console.log(`🤖 Iniciando prueba de IA para ${targetPhone}...`);
+
+        // 1. Datos Simulados del Préstamo
+        const mockLoan = {
+            clientName: "Davey Mena",
+            amount: 50000,
+            dueDate: new Date(Date.now() - 86400000).toLocaleDateString(), // Ayer
+            daysOverdue: 1
+        };
+
+        // 2. Generar mensaje con IA (Ollama)
+        const ai = AIService.getInstance();
+
+        console.log("🧠 Solicitando mensaje a Ollama...");
+        const message = await ai.generateReminderMessage(mockLoan);
+        console.log("📝 Mensaje generado:", message);
+
+        // 3. Enviar por WhatsApp
+        console.log("📨 Enviando por WhatsApp...");
+        const sent = await waService.sendReminder(String(targetPhone), message);
+
+        if (sent) {
+            res.json({ success: true, message, note: "Mensaje generado por IA y enviado a WhatsApp" });
+        } else {
+            res.status(500).json({ error: "Fallo al enviar a WhatsApp (¿Está conectado?)" });
+        }
+
+    } catch (e) {
+        console.error(e);
         res.status(500).json({ error: String(e) });
     }
 });
