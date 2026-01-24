@@ -7,7 +7,17 @@ COPY . .
 # En Easypanel, las variables de entorno se inyectan en tiempo de ejecución
 # Pero para el build de Vite necesitamos definirlas si son "baked in".
 # Usaremos un placeholder o variables genéricas
+# Definir argumentos de construcción (Build Args)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PROJECT_ID
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+
+# Asignarlos como variables de entorno para el build
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
 ENV VITE_API_URL=/api
+
 RUN npm run build
 
 # --- Stage 2: Build Backend ---
