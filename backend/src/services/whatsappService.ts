@@ -67,7 +67,7 @@ export class WhatsAppService {
         });
 
         // Manejo de eventos de conexión
-        this.sock.ev.on('connection.update', (update: ConnectionState) => {
+        this.sock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
