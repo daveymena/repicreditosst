@@ -5,6 +5,7 @@ import path from 'path';
 import { WhatsAppService } from './services/whatsappService';
 import { SchedulerService } from './services/schedulerService';
 import { AIService } from './services/aiService';
+import paymentRoutes from './routes/payments';
 
 dotenv.config();
 
@@ -13,6 +14,9 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Rutas de Pago
+app.use('/api/payments', paymentRoutes);
 
 // Iniciar Servicios
 const waService = WhatsAppService.getInstance();

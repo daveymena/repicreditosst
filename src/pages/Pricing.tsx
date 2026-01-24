@@ -43,18 +43,27 @@ const Pricing = () => {
         setLoading(false);
     }, []);
 
-    // Crear preferencia en el backend (Simulado aquí, idealmente llamar a tu API)
+    // Crear preferencia en el backend
     const createMercadoPagoPreference = async () => {
-        // En producción, esto debe hacerse desde el backend para seguridad
-        // Aquí simulamos o dejamos el ID listo si ya lo tuvieras
-        // Como no tenemos endpoint listo en backend todavía, dejaremos un placeholder
-        // Para que funcione real, necesitamos crear la preferencia en el backend
-        // y devolver el ID.
+        try {
+            const response = await fetch('/api/payments/create-preference', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: 30000,
+                    currency: 'COP',
+                    description: 'Suscripción RapiCréditos Pro - Mensual'
+                })
+            });
 
-        // Simulación:
-        // const res = await fetch('/api/create-preference');
-        // const { id } = await res.json();
-        // setPreferenceId(id);
+            const data = await response.json();
+            if (data.preferenceId) {
+                setPreferenceId(data.preferenceId);
+            }
+        } catch (error) {
+            console.error('Error creating preference:', error);
+            toast.error('Error al configurar el pago');
+        }
     };
 
     const handlePayPalApprove = (data: any, actions: any) => {
