@@ -164,43 +164,78 @@ const Pricing = () => {
                             </ul>
                         </CardContent>
                         <CardFooter className="flex-col gap-4">
-                            {currency === "COP" ? (
-                                <div className="w-full">
-                                    <p className="text-xs text-center mb-2 text-muted-foreground flex items-center justify-center gap-1">
-                                        <CreditCard className="w-3 h-3" /> Pagos seguros con MercadoPago
-                                    </p>
-                                    {preferenceId ? (
-                                        <Wallet initialization={{ preferenceId }} />
-                                    ) : (
-                                        <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white" onClick={() => toast.info("Configurando pasarela...")}>
-                                            Pagar con MercadoPago
-                                        </Button>
-                                    )}
+                            <div className="w-full space-y-4">
+                                {/* Tabs para elegir método de pago */}
+                                <div className="flex gap-2 mb-4">
+                                    <Button
+                                        variant={currency === "COP" ? "default" : "outline"}
+                                        className="flex-1"
+                                        onClick={() => {
+                                            setCurrency("COP");
+                                            setPrice(30000);
+                                            createMercadoPagoPreference();
+                                        }}
+                                    >
+                                        🇨🇴 Pagar en COP
+                                    </Button>
+                                    <Button
+                                        variant={currency === "USD" ? "default" : "outline"}
+                                        className="flex-1"
+                                        onClick={() => {
+                                            setCurrency("USD");
+                                            setPrice(7);
+                                        }}
+                                    >
+                                        🌎 Pagar en USD
+                                    </Button>
                                 </div>
-                            ) : (
-                                <div className="w-full">
-                                    <PayPalScriptProvider options={{ "clientId": "BAAtdQwVN8LvIoRstmHZWlo2ndcJBP8dFZdXLc8HJGdYUXstriO6mO0GJMZimkBCdZHotBkulELqeFm_R4" }}>
-                                        <PayPalButtons
-                                            style={{ layout: "horizontal" }}
-                                            createOrder={(data, actions) => {
-                                                return actions.order.create({
-                                                    intent: "CAPTURE",
-                                                    purchase_units: [
-                                                        {
-                                                            description: "Suscripción RapiCréditos Pro",
-                                                            amount: {
-                                                                currency_code: "USD",
-                                                                value: "7.00"
+
+                                {/* Botón de MercadoPago */}
+                                {currency === "COP" && (
+                                    <div className="w-full">
+                                        <p className="text-xs text-center mb-2 text-muted-foreground flex items-center justify-center gap-1">
+                                            <CreditCard className="w-3 h-3" /> Pagos seguros con MercadoPago
+                                        </p>
+                                        {preferenceId ? (
+                                            <Wallet initialization={{ preferenceId }} />
+                                        ) : (
+                                            <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white" onClick={createMercadoPagoPreference}>
+                                                Generar Link de Pago
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Botón de PayPal */}
+                                {currency === "USD" && (
+                                    <div className="w-full">
+                                        <p className="text-xs text-center mb-2 text-muted-foreground">
+                                            💳 Pago seguro internacional
+                                        </p>
+                                        <PayPalScriptProvider options={{ clientId: "BAAtdQwVN8LvIoRstmHZWlo2ndcJBP8dFZdXLc8HJGdYUXstriO6mO0GJMZimkBCdZHotBkulELqeFm_R4", currency: "USD" }}>
+                                            <PayPalButtons
+                                                style={{ layout: "vertical", color: "blue" }}
+                                                createOrder={(data, actions) => {
+                                                    return actions.order.create({
+                                                        intent: "CAPTURE",
+                                                        purchase_units: [
+                                                            {
+                                                                description: "Suscripción RapiCréditos Pro",
+                                                                amount: {
+                                                                    currency_code: "USD",
+                                                                    value: "7.00"
+                                                                }
                                                             }
-                                                        }
-                                                    ]
-                                                });
-                                            }}
-                                            onApprove={handlePayPalApprove}
-                                        />
-                                    </PayPalScriptProvider>
-                                </div>
-                            )}
+                                                        ]
+                                                    });
+                                                }}
+                                                onApprove={handlePayPalApprove}
+                                            />
+                                        </PayPalScriptProvider>
+                                    </div>
+                                )}
+                            </div>
+
                             <p className="text-xs text-center text-muted-foreground">
                                 Garantía de devolución de 7 días. Cancela cuando quieras.
                             </p>
