@@ -9,14 +9,22 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { toast } from "sonner";
 
-// Inicializar MercadoPago
-initMercadoPago('APP_USR-23c2d74a-d01f-473e-a305-0e5999f023bc');
+// Inicializar MercadoPago dentro del componente o controlando errores
+// initMercadoPago('APP_USR-23c2d74a-d01f-473e-a305-0e5999f023bc');
 
 const Pricing = () => {
     const [currency, setCurrency] = useState<"COP" | "USD">("USD");
     const [price, setPrice] = useState(7);
     const [loading, setLoading] = useState(true);
     const [preferenceId, setPreferenceId] = useState<string | null>(null);
+
+    useEffect(() => {
+        try {
+            initMercadoPago('APP_USR-23c2d74a-d01f-473e-a305-0e5999f023bc');
+        } catch (e) {
+            console.error("Error initializing MercadoPago", e);
+        }
+    }, []);
 
     // Detectar ubicación aproximada
     useEffect(() => {

@@ -43,6 +43,23 @@ app.post('/api/whatsapp/disconnect', async (req, res) => {
     res.json({ message: 'OK' });
 });
 
+app.post('/api/test-message', async (req, res) => {
+    const phone = req.body.phone || req.query.phone;
+    const message = req.body.message || req.query.message;
+
+    console.log('Test Request:', { body: req.body, query: req.query });
+
+    if (!phone) return res.status(400).json({ error: 'Falta el teléfono' });
+
+    try {
+        const sent = await waService.sendReminder(phone, message || "Hola! Este es un mensaje de prueba de RapiCréditos. 🚀");
+        if (sent) res.json({ success: true, message: 'Mensaje enviado a cola' });
+        else res.status(500).json({ error: 'No se pudo enviar. Verifica que WhatsApp esté conectado.' });
+    } catch (e) {
+        res.status(500).json({ error: String(e) });
+    }
+});
+
 app.post('/api/scheduler/run-now', async (req, res) => {
     try {
         await scheduler.checkDueLoans();
