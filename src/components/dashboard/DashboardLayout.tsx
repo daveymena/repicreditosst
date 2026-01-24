@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   ChevronRight,
-  MessageSquare
+  MessageSquare,
+  CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,7 @@ interface DashboardLayoutProps {
 
 // Componente de Espacio Publicitario (Placeholder)
 const AdSpace = ({ position }: { position: "sidebar" | "banner" | "mobile" }) => {
+
   if (position === "sidebar") {
     return (
       <div className="mx-4 mt-auto mb-4 p-4 rounded-xl bg-muted/50 border border-dashed border-muted flex flex-col items-center justify-center text-center gap-2 min-h-[150px]">
@@ -86,6 +88,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: DollarSign, label: "Préstamos", path: "/loans" },
     { icon: Calculator, label: "Simulador", path: "/simulator" },
     { icon: MessageSquare, label: "WhatsApp", path: "/whatsapp" },
+    { icon: CreditCard, label: "Planes y Precios", path: "/pricing" },
     { icon: User, label: "Perfil", path: "/profile" },
   ];
 

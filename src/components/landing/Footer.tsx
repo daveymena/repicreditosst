@@ -29,7 +29,7 @@ const Footer = () => {
 
           {/* Copyright */}
           <p className="text-sm text-muted-foreground">
-            © 2024 RapiCréditos. Todos los derechos reservados.
+            © 2026 RapiCréditos. Todos los derechos reservados.
           </p>
         </div>
       </div>

@@ -15,7 +15,7 @@ const Hero = () => {
 
       <div className="container relative z-10 flex flex-col lg:flex-row items-center justify-between min-h-screen py-20 gap-12">
         {/* Left Content */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
@@ -31,7 +31,7 @@ const Hero = () => {
             <span className="text-sm font-medium">Potenciado con Inteligencia Artificial</span>
           </motion.div>
 
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
@@ -42,7 +42,7 @@ const Hero = () => {
             <span className="block">como un Pro</span>
           </motion.h1>
 
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.6 }}
@@ -51,7 +51,7 @@ const Hero = () => {
             RapiCréditos digitaliza tu negocio de préstamos. Desde el registro del cliente hasta el certificado de Paz y Salvo, todo automatizado con IA.
           </motion.p>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
@@ -63,7 +63,7 @@ const Hero = () => {
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="border-primary/30 text-primary-foreground hover:bg-primary/10 text-lg px-8 py-6">
+            <Button asChild variant="secondary" size="lg" className="bg-white text-primary hover:bg-zinc-100 shadow-lg text-lg px-8 py-6 font-semibold">
               <Link to="/login">
                 Ya tengo cuenta
               </Link>
@@ -71,7 +71,7 @@ const Hero = () => {
           </motion.div>
 
           {/* Stats */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.6 }}
@@ -95,7 +95,7 @@ const Hero = () => {
         </motion.div>
 
         {/* Right Content - Hero Image */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
@@ -103,14 +103,14 @@ const Hero = () => {
         >
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
-            <img 
-              src={heroImage} 
-              alt="RapiCréditos Dashboard" 
+            <img
+              src={heroImage}
+              alt="RapiCréditos Dashboard"
               className="relative rounded-2xl shadow-2xl w-full max-w-2xl mx-auto animate-float"
             />
-            
+
             {/* Floating Card */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}

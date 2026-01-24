@@ -15,6 +15,7 @@ import Simulator from "./pages/Simulator";
 import Profile from "./pages/Profile";
 import WhatsApp from "./pages/WhatsApp";
 import ForgotPassword from "./pages/ForgotPassword";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/simulator" element={<Simulator />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/whatsapp" element={<WhatsApp />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
