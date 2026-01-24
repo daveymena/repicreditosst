@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { 
-  DollarSign, 
-  Users, 
-  TrendingUp, 
-  AlertTriangle, 
-  PlusCircle, 
+import {
+  DollarSign,
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  PlusCircle,
   Clock,
   ArrowUpRight,
   ArrowDownRight
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Stats {
   totalCapital: number;
@@ -141,7 +142,7 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">Resumen de tu cartera de préstamos</p>
           </div>
-          <Button 
+          <Button
             onClick={() => navigate("/loans/new")}
             className="bg-gradient-primary hover:opacity-90 text-primary-foreground shadow-glow"
           >
@@ -206,8 +207,8 @@ const Dashboard = () => {
                 <div className="text-center py-8">
                   <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
                   <p className="text-muted-foreground">No hay préstamos registrados</p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="mt-4"
                     onClick={() => navigate("/loans/new")}
                   >
@@ -236,13 +237,12 @@ const Dashboard = () => {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-foreground">{formatCurrency(loan.total_amount)}</p>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          loan.status === "active" ? "bg-success/20 text-success" :
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${loan.status === "active" ? "bg-success/20 text-success" :
                           loan.status === "completed" ? "bg-primary/20 text-primary" :
-                          "bg-destructive/20 text-destructive"
-                        }`}>
-                          {loan.status === "active" ? "Activo" : 
-                           loan.status === "completed" ? "Pagado" : "En mora"}
+                            "bg-destructive/20 text-destructive"
+                          }`}>
+                          {loan.status === "active" ? "Activo" :
+                            loan.status === "completed" ? "Pagado" : "En mora"}
                         </span>
                       </div>
                     </motion.div>
@@ -258,8 +258,29 @@ const Dashboard = () => {
               <CardTitle className="text-lg">Acciones Rápidas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
+                className="w-full justify-start h-14 hover:bg-primary/5 hover:border-primary border-primary/20 bg-primary/5"
+                onClick={async () => {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) {
+                    const link = `${window.location.origin}/unirme/${user.id}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success("¡Link de registro copiado!");
+                  }
+                }}
+              >
+                <div className="mr-3 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <PlusCircle className="w-5 h-5 text-primary" />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="font-bold text-primary">Compartir Link de Registro</p>
+                  <p className="text-xs text-muted-foreground">Tus clientes podrán registrarse solos</p>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
                 className="w-full justify-start h-14 hover:bg-primary/5 hover:border-primary"
                 onClick={() => navigate("/clients/new")}
               >
@@ -269,9 +290,9 @@ const Dashboard = () => {
                   <p className="text-xs text-muted-foreground">Registrar un cliente nuevo</p>
                 </div>
               </Button>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 className="w-full justify-start h-14 hover:bg-primary/5 hover:border-primary"
                 onClick={() => navigate("/loans/new")}
               >
@@ -281,9 +302,9 @@ const Dashboard = () => {
                   <p className="text-xs text-muted-foreground">Crear un préstamo nuevo</p>
                 </div>
               </Button>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 className="w-full justify-start h-14 hover:bg-primary/5 hover:border-primary"
                 onClick={() => navigate("/simulator")}
               >

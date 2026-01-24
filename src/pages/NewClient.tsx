@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, User, Phone, Mail, MapPin, Briefcase, Users, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const NewClient = () => {
+  const { id } = useParams();
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     document_type: "CC",
@@ -38,6 +40,46 @@ const NewClient = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (id) {
+      loadClientData();
+    }
+  }, [id]);
+
+  const loadClientData = async () => {
+    setIsFetching(true);
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setFormData({
+          full_name: data.full_name || "",
+          document_type: data.document_type || "CC",
+          document_number: data.document_number || "",
+          phone: data.phone || "",
+          email: data.email || "",
+          address: data.address || "",
+          city: data.city || "",
+          occupation: data.occupation || "",
+          monthly_income: data.monthly_income?.toString() || "",
+          reference_name: data.reference_name || "",
+          reference_phone: data.reference_phone || "",
+          reference_relationship: data.reference_relationship || "",
+          notes: data.notes || "",
+        });
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: "No se pudo cargar el cliente", variant: "destructive" });
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -53,7 +95,7 @@ const NewClient = () => {
         return;
       }
 
-      const { error } = await supabase.from("clients").insert({
+      const clientData = {
         user_id: user.id,
         full_name: formData.full_name,
         document_type: formData.document_type,
@@ -68,19 +110,36 @@ const NewClient = () => {
         reference_phone: formData.reference_phone || null,
         reference_relationship: formData.reference_relationship || null,
         notes: formData.notes || null,
-      });
+        updated_at: new Date().toISOString(),
+      };
+
+      let error;
+      if (id) {
+        // Modo Edición
+        const { error: updateError } = await supabase
+          .from("clients")
+          .update(clientData)
+          .eq("id", id);
+        error = updateError;
+      } else {
+        // Modo Creación
+        const { error: insertError } = await supabase
+          .from("clients")
+          .insert(clientData);
+        error = insertError;
+      }
 
       if (error) throw error;
 
       toast({
-        title: "¡Cliente creado!",
-        description: "El cliente ha sido registrado exitosamente.",
+        title: id ? "¡Cliente actualizado!" : "¡Cliente creado!",
+        description: `El cliente ha sido ${id ? 'actualizado' : 'registrado'} exitosamente.`,
       });
       navigate("/clients");
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear el cliente",
+        description: error.message || "No se pudo guardar el cliente",
         variant: "destructive",
       });
     } finally {
@@ -93,8 +152,8 @@ const NewClient = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => navigate("/clients")}
             className="rounded-full"

@@ -17,6 +17,7 @@ import WhatsApp from "./pages/WhatsApp";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Pricing from "./pages/Pricing";
+import ClientOnboarding from "./pages/ClientOnboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/unirme/:lenderId" element={<ClientOnboarding />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/restablecer-clave" element={<ResetPassword />} />
@@ -36,6 +38,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/clients/new" element={<NewClient />} />
+          <Route path="/clients/:id" element={<NewClient />} />
           <Route path="/loans" element={<Loans />} />
           <Route path="/loans/new" element={<NewLoan />} />
           <Route path="/simulator" element={<Simulator />} />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
     ArrowLeft,
@@ -42,9 +42,11 @@ interface LoanCalculation {
 }
 
 const NewLoan = () => {
+    const { id } = useParams();
     const navigate = useNavigate();
     const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isFetching, setIsFetching] = useState(true);
     const [calculation, setCalculation] = useState<LoanCalculation | null>(null);
 
     // Form state
@@ -57,11 +59,47 @@ const NewLoan = () => {
         frequency: "monthly",
         startDate: new Date().toISOString().split("T")[0],
         notes: "",
+        status: "active" as string
     });
 
     useEffect(() => {
         loadClients();
-    }, []);
+        if (id) {
+            loadLoanData();
+        } else {
+            setIsFetching(false);
+        }
+    }, [id]);
+
+    const loadLoanData = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("loans")
+                .select("*")
+                .eq("id", id)
+                .single();
+
+            if (error) throw error;
+            if (data) {
+                setFormData({
+                    clientId: data.client_id,
+                    principalAmount: data.principal_amount.toString(),
+                    interestRate: data.interest_rate?.toString() || "20",
+                    interestType: data.interest_type || "simple",
+                    installments: data.installments?.toString() || "12",
+                    frequency: data.frequency || "monthly",
+                    startDate: data.start_date,
+                    notes: data.notes || "",
+                    status: data.status || "active"
+                });
+            }
+        } catch (error) {
+            console.error("Error loading loan:", error);
+            toast.error("Error al cargar los datos del préstamo");
+        } finally {
+            setIsFetching(false);
+        }
+    };
 
     useEffect(() => {
         if (
@@ -167,7 +205,7 @@ const NewLoan = () => {
             }
 
             // Generate loan number
-            const loanNumber = `L-${Date.now().toString().slice(-8)}`;
+            const loanNumber = `L - ${Date.now().toString().slice(-8)} `;
 
             const loanData = {
                 user_id: user.id,
@@ -259,7 +297,7 @@ const NewLoan = () => {
                                                     const value = e.target.value;
                                                     const selected = clients.find(c =>
                                                         c.full_name === value ||
-                                                        `${c.full_name} - ${c.phone}` === value
+                                                        `${c.full_name} - ${c.phone} ` === value
                                                     );
                                                     if (selected) {
                                                         setFormData({ ...formData, clientId: selected.id });
@@ -270,7 +308,7 @@ const NewLoan = () => {
                                             />
                                             <datalist id="clientsList">
                                                 {clients.map((client) => (
-                                                    <option key={client.id} value={`${client.full_name} - ${client.phone}`} />
+                                                    <option key={client.id} value={`${client.full_name} - ${client.phone} `} />
                                                 ))}
                                             </datalist>
                                         </div>

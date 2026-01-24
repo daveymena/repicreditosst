@@ -131,6 +131,22 @@ const Loans = () => {
         }).format(amount);
     };
 
+    const handleDeleteLoan = async (id: string) => {
+        if (!confirm("¿Estás seguro de eliminar este préstamo? Esta acción no se puede deshacer.")) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from("loans").delete().eq("id", id);
+            if (error) throw error;
+            toast.success("Préstamo eliminado exitosamente");
+            loadLoans();
+        } catch (error) {
+            console.error("Error deleting loan:", error);
+            toast.error("Error al eliminar el préstamo");
+        }
+    };
+
     const getStatusBadge = (status: string) => {
         const statusConfig = {
             active: { label: "Activo", variant: "default" as const, icon: TrendingUp },
@@ -443,7 +459,15 @@ const Loans = () => {
                                                         >
                                                             <Edit className="w-4 h-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="sm" className="text-destructive">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-destructive"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteLoan(loan.id);
+                                                            }}
+                                                        >
                                                             <Trash2 className="w-4 h-4" />
                                                         </Button>
                                                     </div>
