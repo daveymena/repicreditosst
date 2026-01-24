@@ -9,7 +9,12 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import NewClient from "./pages/NewClient";
+import Loans from "./pages/Loans";
+import NewLoan from "./pages/NewLoan";
 import Simulator from "./pages/Simulator";
+import Profile from "./pages/Profile";
+import WhatsApp from "./pages/WhatsApp";
+import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,11 +28,16 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/clients/new" element={<NewClient />} />
+          <Route path="/loans" element={<Loans />} />
+          <Route path="/loans/new" element={<NewLoan />} />
           <Route path="/simulator" element={<Simulator />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/whatsapp" element={<WhatsApp />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
