@@ -59,7 +59,8 @@ const publicPath = path.join(__dirname, '../public');
 app.use(express.static(publicPath));
 
 // Cualquier ruta no API redirige al index.html (SPA)
-app.get('*', (req, res) => {
+// Express 5 requiere Regex para match-all
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
