@@ -8,5 +8,10 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true
-    }
+    },
+    "exclude": [
+        "scripts",
+        "node_modules",
+        "dist"
+    ]
 }
