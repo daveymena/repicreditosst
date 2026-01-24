@@ -40,6 +40,7 @@ scheduler.start();
 
 // Rutas API
 app.get('/api/whatsapp/status', (req, res) => {
+    console.log(`[API] Solicitud de estado: ${connectionStatus}`);
     res.json({ status: connectionStatus, qr: currentQR });
 });
 
