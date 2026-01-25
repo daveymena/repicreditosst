@@ -69,31 +69,58 @@ _RapiCréditos Pro_`;
     }
 
     /**
-     * Responde a un mensaje del usuario (Modo Conversación)
+     * Responde a un mensaje del usuario (Modo Conversación / Soporte)
      */
     async chatWithClient(clientName: string, incomingMessage: string): Promise<string> {
-        const prompt = `
-            Eres el asistente virtual de RapiCréditos. Estás hablando con el cliente ${clientName}.
-            El cliente dice: "${incomingMessage}"
+        if (process.env.USE_LLM !== 'true') return "Hola, soy el asistente de RapiCréditos. En un momento te atenderemos.";
 
-            Tu objetivo es:
-            1. Responder dudas sobre pagos, horarios o saldos.
-            2. Si piden prórroga, diles que deben contactar al administrador directamente.
-            3. Sé muy amable y profesional en español latino.
-            4. Mantén la respuesta corta (máximo 40 palabras).
+        const prompt = `
+            Eres "RapiBot", el asistente inteligente de RapiCréditos Pro. 
+            Estás hablando con el cliente ${clientName}.
+            
+            CONOCIMIENTO DE LA APP:
+            - RapiCréditos es una plataforma de gestión de préstamos personales.
+            - Interés: La tasa estándar es del 20% mensual (pueden variar según el prestamista).
+            - Registro: Los clientes nuevos pueden registrarse mediante el link de registro que les envía su prestamista.
+            - Solicitud: Al registrarse, el cliente puede pedir su préstamo de una vez, eligiendo cuotas y frecuencia.
+            - Estados: Los préstamos pueden estar en Pendiente (esperando aprobación), Activo (vigente), Pagado (terminado) o En Mora (atrasado).
+            - Pagos: Aceptamos Nequi, Bancolombia, Daviplata y Efectivo (coordinar con el asesor).
+            - Mora: Los pagos atrasados generan cargos adicionales (según política del prestamista).
+            
+            REGLAS DE RESPUESTA:
+            1. Si preguntan "¿Cómo obtengo un préstamo?", diles que deben completar el formulario en el link de registro que el asesor les envió.
+            2. Si preguntan sobre el interés, diles que es del 20% mensual aprox.
+            3. Si piden prórroga o cambios en el pago, diles: "Debo escalar esta solicitud al administrador para que revisen tu caso personalmente".
+            4. Si preguntan por saldos o estados, pídeles que esperen a que un asesor humano revise su perfil.
+            5. Mantén un tono amable, profesional y usa emojis 🏦💰✨.
+            6. Sé conciso: máximo 60 palabras.
+            7. Responde en español latino.
+
+            MENSAJE DEL CLIENTE: "${incomingMessage}"
         `;
 
         try {
             const response = await axios.post(`${OLLAMA_URL}/api/generate`, {
                 model: OLLAMA_MODEL,
                 prompt: prompt,
-                stream: false
+                stream: false,
+                options: {
+                    num_predict: 150,
+                    temperature: 0.6
+                }
+            }, {
+                timeout: 30000
             });
 
             return response.data.response.trim();
         } catch (error) {
             console.error('Error en chat Ollama:', error);
-            return "Lo siento, en este momento no puedo procesar tu mensaje. Por favor intenta más tarde o contacta a soporte.";
+            return `¡Hola ${clientName}! 👋 Gracias por escribir a *RapiCréditos Pro*. En este momento estoy procesando muchas solicitudes. 
+
+📌 Si tienes dudas sobre un préstamo, recuerda que la tasa es del 20%. 
+📌 Para nuevos créditos, solicita tu link de registro al asesor.
+
+¡Un asesor humano te responderá en breve! 🏦✨`;
         }
     }
 }
