@@ -48,8 +48,9 @@ RUN mkdir -p sessions && chown -R node:node sessions
 
 # Configurar entorno
 ENV NODE_ENV=production
-ENV PORT=3000
+# Google Cloud Run inyectará el PORT automáticamente, pero definimos un default
+ENV PORT=8080
 
-EXPOSE 3000
+EXPOSE 8080
 
 CMD ["node", "dist/index.js"]

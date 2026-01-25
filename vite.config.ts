@@ -36,24 +36,22 @@ export default defineConfig(({ mode }) => ({
         description: 'Gestión profesional de préstamos con IA',
         theme_color: '#059669', // Emerald 600
         background_color: '#ffffff',
-        display: 'standalone', // Esto Oculta la URL
+        display: 'standalone',
+        display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
         orientation: 'portrait',
+        categories: ['finance', 'business'],
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'logo.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
+            src: 'logo.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'maskable'
           }
         ]
       }

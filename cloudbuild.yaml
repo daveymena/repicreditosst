@@ -1,0 +1,36 @@
+steps:
+  # 1. Build de la imagen Docker
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '--build-arg', 'VITE_SUPABASE_URL=${_SUPABASE_URL}',
+      '--build-arg', 'VITE_SUPABASE_PROJECT_ID=${_SUPABASE_PROJECT_ID}',
+      '--build-arg', 'VITE_SUPABASE_PUBLISHABLE_KEY=${_SUPABASE_PUBLISHABLE_KEY}',
+      '-t', 'gcr.io/$PROJECT_ID/rapicredi-pro:$COMMIT_SHA',
+      '.'
+    ]
+
+  # 2. Push la imagen al registro de Google
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/rapicredi-pro:$COMMIT_SHA']
+
+  # 3. Desplegar en Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'rapicredi-pro'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/rapicredi-pro:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+images:
+  - 'gcr.io/$PROJECT_ID/rapicredi-pro:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
