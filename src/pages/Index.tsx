@@ -18,8 +18,6 @@ const Index = () => {
     }
   }, [session, loading, navigate]);
 
-  if (loading) return null;
-
   return (
     <div className="min-h-screen">
       <Navbar />
