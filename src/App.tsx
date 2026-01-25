@@ -21,6 +21,8 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Pricing from "@/pages/Pricing";
 import ClientOnboarding from "@/pages/ClientOnboarding";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsAndConditions from "@/pages/TermsAndConditions";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -45,6 +47,8 @@ const App = () => {
               <Route path="/" element={<Index />} />
               <Route path="/unirme/:lenderId" element={<ClientOnboarding />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/privacidad" element={<PrivacyPolicy />} />
+              <Route path="/terminos" element={<TermsAndConditions />} />
 
               {/* Guest Only Routes */}
               <Route element={<PublicRoute />}>

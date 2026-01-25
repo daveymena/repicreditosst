@@ -68,7 +68,7 @@ const Register = () => {
       <div className="hidden lg:flex flex-1 hero-gradient items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-accent/20 rounded-full blur-3xl" />
-        
+
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -177,6 +177,10 @@ const Register = () => {
                 </button>
               </div>
             </div>
+
+            <p className="text-[10px] text-muted-foreground text-center">
+              Al registrarte, aceptas nuestros <Link to="/terminos" className="text-primary hover:underline">Términos</Link> y la <Link to="/privacidad" className="text-primary hover:underline">Política de Privacidad</Link>.
+            </p>
 
             <Button
               type="submit"

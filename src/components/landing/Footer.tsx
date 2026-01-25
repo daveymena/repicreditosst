@@ -4,7 +4,7 @@ import { Banknote } from "lucide-react";
 const Footer = () => {
   return (
     <footer className="bg-card border-t border-border py-12">
-      <div className="container">
+      <div className="container px-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
@@ -16,14 +16,14 @@ const Footer = () => {
 
           {/* Links */}
           <nav className="flex items-center gap-6">
-            <Link to="#features" className="text-muted-foreground hover:text-primary transition-colors">
-              Características
+            <Link to="/pricing" className="text-muted-foreground hover:text-primary transition-colors text-sm">
+              Planes
             </Link>
-            <Link to="/login" className="text-muted-foreground hover:text-primary transition-colors">
-              Iniciar Sesión
+            <Link to="/privacidad" className="text-muted-foreground hover:text-primary transition-colors text-sm">
+              Privacidad
             </Link>
-            <Link to="/register" className="text-muted-foreground hover:text-primary transition-colors">
-              Registrarse
+            <Link to="/terminos" className="text-muted-foreground hover:text-primary transition-colors text-sm">
+              Términos
             </Link>
           </nav>
 
