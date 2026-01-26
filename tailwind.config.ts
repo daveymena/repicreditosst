@@ -143,9 +143,6 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-primary': 'linear-gradient(135deg, hsl(158 64% 42%) 0%, hsl(158 75% 55%) 100%)',
-        'gradient-gold': 'linear-gradient(135deg, hsl(43 96% 56%) 0%, hsl(43 100% 65%) 100%)',
-        'gradient-hero': 'linear-gradient(135deg, hsl(160 30% 8%) 0%, hsl(158 40% 15%) 50%, hsl(160 30% 8%) 100%)',
         'shimmer': 'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.1), transparent)',
       },
     },
