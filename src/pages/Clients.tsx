@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { 
-  Search, 
-  Plus, 
-  Phone, 
-  Mail, 
+import {
+  Search,
+  Plus,
+  Phone,
+  Mail,
   MapPin,
   MoreVertical,
   Users as UsersIcon,
-  Filter
+  Filter,
+  Download,
+  Upload,
+  FileSpreadsheet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +76,79 @@ const Clients = () => {
     }
   };
 
+  const handleExport = () => {
+    if (clients.length === 0) {
+      toast({ title: "Sin datos", description: "No hay clientes para exportar", variant: "destructive" });
+      return;
+    }
+
+    const headers = ["ID", "Nombre", "Documento", "Teléfono", "Email", "Ciudad", "Estado"];
+    const rows = clients.map(c => [
+      c.id,
+      c.full_name,
+      c.document_number || "",
+      c.phone || "",
+      c.email || "",
+      c.city || "",
+      c.status
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `clientes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split("\n");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Skip header and filter empty lines
+        const clientsToImport = lines.slice(1)
+          .filter(line => line.trim() !== "")
+          .map(line => {
+            const values = line.split(",").map(v => v.trim());
+            return {
+              user_id: user.id,
+              full_name: values[1],
+              document_number: values[2],
+              phone: values[3],
+              email: values[4],
+              city: values[5],
+              status: values[6] || "active"
+            };
+          });
+
+        if (clientsToImport.length > 0) {
+          const { error } = await supabase.from("clients").insert(clientsToImport);
+          if (error) throw error;
+
+          toast({ title: "Éxito", description: `${clientsToImport.length} clientes importados correctamente` });
+          loadClients();
+        }
+      } catch (error: any) {
+        toast({ title: "Error", description: "No se pudo importar el archivo. Verifica el formato.", variant: "destructive" });
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    event.target.value = "";
+  };
+
   const filteredClients = clients.filter(client =>
     client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.phone.includes(searchTerm) ||
@@ -106,13 +182,40 @@ const Clients = () => {
             <h1 className="text-3xl font-bold text-foreground">Clientes</h1>
             <p className="text-muted-foreground">Gestiona tu cartera de clientes</p>
           </div>
-          <Button 
-            onClick={() => navigate("/clients/new")}
-            className="bg-gradient-primary hover:opacity-90 text-primary-foreground shadow-glow"
-          >
-            <Plus className="mr-2 w-5 h-5" />
-            Nuevo Cliente
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleExport()}
+              className="border-primary/20 hover:bg-primary/5"
+            >
+              <Download className="mr-2 w-4 h-4" />
+              Exportar
+            </Button>
+            <div className="relative">
+              <input
+                type="file"
+                id="csv-import"
+                className="hidden"
+                accept=".csv"
+                onChange={(e) => handleImport(e)}
+              />
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById("csv-import")?.click()}
+                className="border-primary/20 hover:bg-primary/5"
+              >
+                <Upload className="mr-2 w-4 h-4" />
+                Importar
+              </Button>
+            </div>
+            <Button
+              onClick={() => navigate("/clients/new")}
+              className="bg-gradient-primary hover:opacity-90 text-primary-foreground shadow-glow"
+            >
+              <Plus className="mr-2 w-5 h-5" />
+              Nuevo Cliente
+            </Button>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -145,12 +248,12 @@ const Clients = () => {
                 {searchTerm ? "No se encontraron clientes" : "Sin clientes registrados"}
               </h3>
               <p className="text-muted-foreground mb-6">
-                {searchTerm 
-                  ? "Intenta con otro término de búsqueda" 
+                {searchTerm
+                  ? "Intenta con otro término de búsqueda"
                   : "Comienza agregando tu primer cliente"}
               </p>
               {!searchTerm && (
-                <Button 
+                <Button
                   onClick={() => navigate("/clients/new")}
                   className="bg-gradient-primary text-primary-foreground"
                 >
@@ -169,7 +272,7 @@ const Clients = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card 
+                <Card
                   className="hover:shadow-lg transition-all duration-300 cursor-pointer group"
                   onClick={() => navigate(`/clients/${client.id}`)}
                 >

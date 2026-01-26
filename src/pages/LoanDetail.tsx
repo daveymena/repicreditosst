@@ -214,6 +214,97 @@ const LoanDetail = () => {
         return <Badge variant={config.variant}>{config.label}</Badge>;
     };
 
+    const handleDownloadReceipt = (payment: Payment) => {
+        if (!loan) return;
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Recibo de Pago - ${loan.loan_number}</title>
+                    <style>
+                        body { font-family: 'Courier New', Courier, monospace; width: 300px; padding: 20px; border: 1px dashed #000; }
+                        .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
+                        .item { display: flex; justify-content: space-between; margin: 5px 0; }
+                        .footer { text-align: center; margin-top: 20px; font-size: 12px; }
+                        .amount { font-size: 20px; font-weight: bold; text-align: center; margin: 15px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <strong>RAPICRÉDITOS SAAS</strong><br>
+                        NIT: 900.XXX.XXX-1<br>
+                        RECIBO DE CAJA
+                    </div>
+                    <div class="item"><span>Fecha:</span> <span>${new Date(payment.payment_date).toLocaleString()}</span></div>
+                    <div class="item"><span>Crédito:</span> <span>${loan.loan_number}</span></div>
+                    <div class="item"><span>Cliente:</span> <span>${loan.clients?.full_name}</span></div>
+                    <div class="item"><span>Método:</span> <span>${payment.payment_method}</span></div>
+                    <div class="amount">${formatCurrency(payment.amount)}</div>
+                    <div class="item"><span>Concepto:</span> <span>Abono #${payment.payment_number}</span></div>
+                    <div class="footer">
+                        SOPORTE DE PAGO EXITOSO<br>
+                        Gracias por su cumplimiento.
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
+    const handleDownloadPazYSalvo = () => {
+        if (!loan) return;
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const date = new Date().toLocaleDateString();
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Certificado de Paz y Salvo - ${loan.loan_number}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 40px; color: #333; }
+                        .header { text-align: center; margin-bottom: 50px; }
+                        .content { margin-bottom: 50px; }
+                        .footer { margin-top: 100px; text-align: center; }
+                        .signature { border-top: 1px solid #000; width: 250px; margin: 0 auto; padding-top: 10px; }
+                        .stamp { color: #059669; font-weight: bold; border: 3px solid #059669; display: inline-block; padding: 10px; transform: rotate(-5deg); margin-top: 20px; text-transform: uppercase; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>CERTIFICADO DE PAZ Y SALVO</h1>
+                        <p>Orden # ${loan.loan_number}</p>
+                    </div>
+                    <div class="content">
+                        <p>A quien pueda interesar,</p>
+                        <p>Por medio de la presente se certifica que el cliente <strong>${loan.clients?.full_name}</strong>, identificado(a) con la documentación registrada en nuestro sistema, se encuentra a la fecha en <strong>PAZ Y SALVO</strong> por concepto de las obligaciones técnicas y financieras contraídas mediante el contrato de préstamo número <strong>${loan.loan_number}</strong>.</p>
+                        <p>El préstamo por un valor total de ${formatCurrency(loan.total_amount)} fue pagado en su totalidad satisfactoriamente.</p>
+                        <p>Se expide en la ciudad correspondiente, a los ${date}.</p>
+                        <div style="text-align: center;">
+                            <div class="stamp">TOTALMENTE PAGADO</div>
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <div class="signature">Firma Autorizada</div>
+                        <p>RapiCréditos SaaS System</p>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
     if (isLoading) {
         return <DashboardLayout><div className="flex items-center justify-center h-96"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div></DashboardLayout>;
     }
@@ -237,11 +328,24 @@ const LoanDetail = () => {
                         </div>
                     </div>
                     <div className="flex gap-2">
+                        {loan.status === 'completed' && (
+                            <Button
+                                variant="outline"
+                                onClick={handleDownloadPazYSalvo}
+                                className="border-primary text-primary hover:bg-primary/5"
+                            >
+                                <CheckCircle className="mr-2 w-5 h-5" />
+                                Descargar Paz y Salvo
+                            </Button>
+                        )}
                         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
                             <DialogTrigger asChild>
-                                <Button className="bg-gradient-primary hover:opacity-90 shadow-glow">
+                                <Button
+                                    className="bg-gradient-primary hover:opacity-90 shadow-glow"
+                                    disabled={loan.status === 'completed'}
+                                >
                                     <Plus className="mr-2 w-5 h-5" />
-                                    Registrar Abono
+                                    {loan.status === 'completed' ? 'Préstamo Pagado' : 'Registrar Abono'}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -348,7 +452,13 @@ const LoanDetail = () => {
                                                     <TableCell>{p.payment_method}</TableCell>
                                                     <TableCell>Abono #{p.payment_number}</TableCell>
                                                     <TableCell className="text-right">
-                                                        <Button variant="ghost" size="sm"><Download className="w-4 h-4" /></Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleDownloadReceipt(p)}
+                                                        >
+                                                            <Download className="w-4 h-4" />
+                                                        </Button>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
