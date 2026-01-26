@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
     User,
     Mail,
@@ -17,9 +17,6 @@ import {
     Bell,
     DollarSign,
     Percent,
-    Sparkles,
-    Globe,
-    ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -50,6 +47,7 @@ const Profile = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [userId, setUserId] = useState<string>("");
     const [profileData, setProfileData] = useState<ProfileData>({
         full_name: "",
         email: "",
@@ -70,9 +68,23 @@ const Profile = () => {
     const loadProfile = async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) { navigate("/login"); return; }
+            if (!user) {
+                navigate("/login");
+                return;
+            }
 
-            const { data: profile, error } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+            setUserId(user.id);
+
+            // Load profile data
+            const { data: profile, error } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("user_id", user.id)
+                .single();
+
+            if (error && error.code !== "PGRST116") {
+                throw error;
+            }
 
             if (profile) {
                 const data = profile as any;
@@ -89,9 +101,10 @@ const Profile = () => {
                     late_fee_policy: data.late_fee_policy || "Los pagos atrasados generan un cargo adicional del 5% sobre el valor de la cuota.",
                 });
             } else {
-                setProfileData(prev => ({ ...prev, email: user.email || "" }));
+                setProfileData({ ...profileData, email: user.email || "" });
             }
         } catch (error) {
+            console.error("Error loading profile:", error);
             toast.error("Error al cargar el perfil");
         } finally {
             setIsLoading(false);
@@ -105,13 +118,21 @@ const Profile = () => {
         }
 
         setIsSaving(true);
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                navigate("/login");
+                return;
+            }
 
-            const { data: existingProfile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+            const { data: existingProfile } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("user_id", user.id)
+                .single();
 
-            const payload = {
+            const profilePayload = {
                 user_id: user.id,
                 full_name: profileData.full_name,
                 email: profileData.email,
@@ -127,178 +148,398 @@ const Profile = () => {
             };
 
             const { error } = existingProfile
-                ? await supabase.from("profiles").update(payload).eq("user_id", user.id)
-                : await supabase.from("profiles").insert([payload]);
+                ? await supabase.from("profiles").update(profilePayload).eq("user_id", user.id)
+                : await supabase.from("profiles").insert([profilePayload]);
 
             if (error) throw error;
-            toast.success("¡Configuración guardada!");
-            loadProfile();
+
+            toast.success("¡Perfil y configuración actualizados!");
+            loadProfile(); // Reload to sync
         } catch (error: any) {
-            toast.error("Error al guardar: " + error.message);
+            console.error("Error saving profile:", error);
+            if (error.code === "PGRST204" || error.message?.includes("column")) {
+                toast.error("Error de base de datos: Faltan columnas en la tabla profiles. Por favor, ejecuta el script SQL de reparación en Supabase.", {
+                    duration: 6000,
+                });
+            } else {
+                toast.error("Error al guardar el perfil: " + (error.message || "Error desconocido"));
+            }
         } finally {
             setIsSaving(false);
         }
     };
 
+    const getInitials = (name: string) => {
+        return name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
     if (isLoading) {
-        return <DashboardLayout><div className="flex items-center justify-center h-96"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div></DashboardLayout>;
+        return (
+            <DashboardLayout>
+                <div className="flex items-center justify-center h-96">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            </DashboardLayout>
+        );
     }
 
     return (
         <DashboardLayout>
-            <div className="max-w-6xl mx-auto space-y-12 pb-20">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
-                    <div className="space-y-2">
-                        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">
-                            <Shield className="w-3 h-3" /> Cuenta Corporativa Verificada
-                        </motion.div>
-                        <h1 className="text-5xl font-black text-foreground tracking-tight">Configuración</h1>
-                        <p className="text-muted-foreground font-bold">Personaliza tu identidad y las reglas de tu negocio</p>
-                    </div>
-                    <Button onClick={handleSave} disabled={isSaving} className="h-16 px-10 rounded-[2rem] bg-gradient-primary shadow-glow text-lg font-black button-shimmer">
-                        {isSaving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-3" />}
-                        GUARDAR CAMBIOS
-                    </Button>
+            <div className="space-y-8">
+                {/* Header */}
+                <div>
+                    <h1 className="text-3xl font-bold text-foreground">Mi Perfil</h1>
+                    <p className="text-muted-foreground">
+                        Administra tu información personal y configuración de cuenta
+                    </p>
                 </div>
 
-                <div className="grid lg:grid-cols-4 gap-8">
-                    {/* Left Panel: Profile Visual */}
-                    <div className="lg:col-span-1 space-y-8">
-                        <Card className="rounded-[2.5rem] border-none glass-card p-8 text-center relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-24 bg-primary/10 rounded-full blur-3xl -mr-12 -mt-12" />
-                            <CardContent className="p-0 space-y-6 relative z-10">
-                                <div className="relative inline-block group/avatar">
-                                    <Avatar className="w-32 h-32 border-8 border-white shadow-xl mx-auto ring-4 ring-primary/10 transition-transform duration-500 group-hover/avatar:scale-105">
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* Profile Card */}
+                    <div className="lg:col-span-1">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Foto de Perfil</CardTitle>
+                                <CardDescription>
+                                    Personaliza tu imagen de perfil
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="flex flex-col items-center gap-4">
+                                    <Avatar className="w-32 h-32">
                                         <AvatarImage src={profileData.avatar_url} />
-                                        <AvatarFallback className="text-4xl bg-gradient-primary text-white font-black">
-                                            {profileData.full_name?.charAt(0) || "U"}
+                                        <AvatarFallback className="text-2xl bg-gradient-primary text-primary-foreground">
+                                            {profileData.full_name ? getInitials(profileData.full_name) : "RC"}
                                         </AvatarFallback>
                                     </Avatar>
-                                    <Button size="icon" className="absolute bottom-1 right-1 w-10 h-10 rounded-xl bg-white text-primary shadow-lg border-2 border-primary/20 hover:bg-primary hover:text-white transition-all">
-                                        <Camera className="w-5 h-5" />
+                                    <Button variant="outline" size="sm" disabled>
+                                        <Camera className="mr-2 w-4 h-4" />
+                                        Cambiar Foto
                                     </Button>
+                                    <p className="text-xs text-muted-foreground text-center">
+                                        JPG, PNG o GIF. Máximo 2MB.
+                                    </p>
                                 </div>
-                                <div className="space-y-1">
-                                    <h3 className="text-2xl font-black text-foreground">{profileData.business_name || "Mi Negocio"}</h3>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Administrador Pro</p>
-                                </div>
-                                <div className="pt-6 grid grid-cols-2 gap-2 text-left">
-                                    <div className="bg-white/50 p-3 rounded-2xl border border-white/20">
-                                        <p className="text-[8px] font-black text-muted-foreground uppercase">Capital</p>
-                                        <p className="font-bold text-sm tracking-tight text-primary">{profileData.currency}</p>
-                                    </div>
-                                    <div className="bg-white/50 p-3 rounded-2xl border border-white/20">
-                                        <p className="text-[8px] font-black text-muted-foreground uppercase">Tasa Base</p>
-                                        <p className="font-bold text-sm tracking-tight text-primary">{profileData.default_interest_rate}%</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
 
-                        {/* Integration Quick Status */}
-                        <div className="space-y-4 px-2">
-                            <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white">
-                                        <MessageSquare className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-xs font-black uppercase text-emerald-600">WhatsApp Bot</span>
-                                </div>
-                                <Switch checked={profileData.whatsapp_connected} />
-                            </div>
-                            <div className="flex items-center justify-between p-4 rounded-2xl bg-accent/5 border border-accent/10 opacity-50">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white">
-                                        <Globe className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-xs font-black uppercase text-accent-foreground">API Sync</span>
-                                </div>
-                                <Switch disabled />
-                            </div>
-                        </div>
-                    </div>
+                                <Separator />
 
-                    {/* Right Panel: Forms */}
-                    <div className="lg:col-span-3 space-y-8">
-                        {/* Personal/Business Info */}
-                        <Card className="rounded-[3rem] border-none glass-card p-10">
-                            <CardHeader className="p-0 mb-8">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                                        <Sparkles className="text-primary w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <CardTitle className="text-2xl font-black">Información del Prestamista</CardTitle>
-                                        <CardDescription className="font-bold">Define cómo aparecerás ante tus clientes</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-0 space-y-8">
-                                <div className="grid md:grid-cols-2 gap-8">
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Nombre del Administrador</Label>
-                                        <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" value={profileData.full_name} onChange={(e) => setProfileData({ ...profileData, full_name: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Nombre Comercial (Logo)</Label>
-                                        <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" value={profileData.business_name} onChange={(e) => setProfileData({ ...profileData, business_name: e.target.value })} placeholder="Ejem: RapiCréditos Medellín..." />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Correo de Operaciones</Label>
-                                        <Input disabled className="h-14 rounded-2xl bg-muted border-none px-6 font-bold opacity-60" value={profileData.email} />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Contacto Oficial</Label>
-                                        <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" value={profileData.phone} onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })} />
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Sede de Operaciones</Label>
-                                    <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" value={profileData.address} onChange={(e) => setProfileData({ ...profileData, address: e.target.value })} />
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Defaults & Policy */}
-                        <Card className="rounded-[3rem] border-none glass-card p-10 bg-gradient-to-br from-white/80 to-primary/5">
-                            <CardHeader className="p-0 mb-8">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
-                                        <Percent className="text-accent w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <CardTitle className="text-2xl font-black">Reglas de Negocio</CardTitle>
-                                        <CardDescription className="font-bold">Parámetros automáticos para nuevas solicitudes</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-0 space-y-8">
-                                <div className="grid md:grid-cols-2 gap-8">
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Moneda del Sistema</Label>
-                                        <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-black text-primary text-lg" value={profileData.currency} onChange={(e) => setProfileData({ ...profileData, currency: e.target.value })} placeholder="COP, USD, MXN..." />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Interés Base (%)</Label>
-                                        <Input type="number" className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-black text-primary text-xl" value={profileData.default_interest_rate} onChange={(e) => setProfileData({ ...profileData, default_interest_rate: Number(e.target.value) })} />
-                                    </div>
-                                </div>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Política de Mora (Advertencia Cliente)</Label>
-                                        <div className="flex items-center gap-1 text-rose-500 animate-pulse">
-                                            <AlertCircle className="w-3 h-3" />
-                                            <span className="text-[10px] font-black italic uppercase">Visible en Link Web</span>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <MessageSquare className="w-5 h-5 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">WhatsApp</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {profileData.whatsapp_connected ? "Conectado" : "Desconectado"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Switch
+                                            checked={profileData.whatsapp_connected}
+                                            onCheckedChange={(checked) =>
+                                                setProfileData({ ...profileData, whatsapp_connected: checked })
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                                                <Shield className="w-5 h-5 text-success" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">Autenticación 2FA</p>
+                                                <p className="text-xs text-muted-foreground">Desactivado</p>
+                                            </div>
+                                        </div>
+                                        <Switch disabled />
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                                                <Bell className="w-5 h-5 text-accent" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">Notificaciones</p>
+                                                <p className="text-xs text-muted-foreground">Activado</p>
+                                            </div>
+                                        </div>
+                                        <Switch defaultChecked />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Information Form */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Personal Information */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <User className="w-5 h-5 text-primary" />
+                                    Información Personal
+                                </CardTitle>
+                                <CardDescription>
+                                    Actualiza tus datos personales y de contacto
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="fullName">Nombre Completo *</Label>
+                                        <div className="relative">
+                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                            <Input
+                                                id="fullName"
+                                                placeholder="Juan Pérez"
+                                                value={profileData.full_name}
+                                                onChange={(e) =>
+                                                    setProfileData({ ...profileData, full_name: e.target.value })
+                                                }
+                                                className="pl-10"
+                                            />
                                         </div>
                                     </div>
-                                    <Textarea className="min-h-[120px] rounded-[2rem] bg-secondary/50 border-none px-8 py-6 font-medium italic text-muted-foreground" value={profileData.late_fee_policy} onChange={(e) => setProfileData({ ...profileData, late_fee_policy: e.target.value })} />
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email">Correo Electrónico *</Label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                placeholder="correo@ejemplo.com"
+                                                value={profileData.email}
+                                                onChange={(e) =>
+                                                    setProfileData({ ...profileData, email: e.target.value })
+                                                }
+                                                className="pl-10"
+                                                disabled
+                                            />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            El correo no se puede modificar
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="phone">Teléfono</Label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                            <Input
+                                                id="phone"
+                                                type="tel"
+                                                placeholder="+57 300 123 4567"
+                                                value={profileData.phone}
+                                                onChange={(e) =>
+                                                    setProfileData({ ...profileData, phone: e.target.value })
+                                                }
+                                                className="pl-10"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="businessName">Nombre del Negocio</Label>
+                                        <div className="relative">
+                                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                            <Input
+                                                id="businessName"
+                                                placeholder="Mi Negocio de Préstamos"
+                                                value={profileData.business_name}
+                                                onChange={(e) =>
+                                                    setProfileData({ ...profileData, business_name: e.target.value })
+                                                }
+                                                className="pl-10"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="address">Dirección</Label>
+                                    <div className="relative">
+                                        <MapPin className="absolute left-3 top-3 text-muted-foreground w-4 h-4" />
+                                        <Textarea
+                                            id="address"
+                                            placeholder="Calle 123 #45-67, Barrio, Ciudad"
+                                            value={profileData.address}
+                                            onChange={(e) =>
+                                                setProfileData({ ...profileData, address: e.target.value })
+                                            }
+                                            className="pl-10 min-h-[80px]"
+                                        />
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <div className="flex justify-end pt-4">
-                            <Button variant="ghost" className="rounded-2xl h-14 px-8 font-black text-muted-foreground hover:bg-rose-500/5 hover:text-rose-500 transition-colors">
-                                ELIMINAR CUENTA Y DATOS
+                        {/* Loan Settings */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-primary">
+                                    <DollarSign className="w-5 h-5" />
+                                    Configuración de Préstamos
+                                </CardTitle>
+                                <CardDescription>
+                                    Define la moneda, tasa de interés y política de mora que verán tus clientes
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="currency">Moneda de Préstamo</Label>
+                                        <div className="relative">
+                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                            <Input
+                                                id="currency"
+                                                placeholder="COP, USD, MXN..."
+                                                value={profileData.currency}
+                                                onChange={(e) =>
+                                                    setProfileData({ ...profileData, currency: e.target.value })
+                                                }
+                                                className="pl-10"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="interestRate">Tasa de Interés % (Referencial)</Label>
+                                        <div className="relative">
+                                            <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                            <Input
+                                                id="interestRate"
+                                                type="number"
+                                                placeholder="20"
+                                                value={profileData.default_interest_rate}
+                                                onChange={(e) =>
+                                                    setProfileData({ ...profileData, default_interest_rate: Number(e.target.value) })
+                                                }
+                                                className="pl-10"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="lateFee">Política de Mora (Advertencia para el cliente)</Label>
+                                    <div className="relative">
+                                        <AlertCircle className="absolute left-3 top-3 text-muted-foreground w-4 h-4" />
+                                        <Textarea
+                                            id="lateFee"
+                                            placeholder="Escribe aquí los cargos adicionales por retraso..."
+                                            value={profileData.late_fee_policy}
+                                            onChange={(e) =>
+                                                setProfileData({ ...profileData, late_fee_policy: e.target.value })
+                                            }
+                                            className="pl-10 min-h-[100px]"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Este texto aparecerá en letras amarillas cuando el cliente use tu link de registro.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Account Statistics */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Estadísticas de Cuenta</CardTitle>
+                                <CardDescription>
+                                    Información sobre tu actividad en RapiCréditos
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid md:grid-cols-3 gap-4">
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="p-4 rounded-xl bg-primary/5 border border-primary/20"
+                                    >
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <CheckCircle className="w-5 h-5 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">Cuenta Activa</p>
+                                                <p className="text-lg font-bold text-foreground">Verificada</p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.1 }}
+                                        className="p-4 rounded-xl bg-success/5 border border-success/20"
+                                    >
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                                                <User className="w-5 h-5 text-success" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">Miembro desde</p>
+                                                <p className="text-lg font-bold text-foreground">
+                                                    {new Date().toLocaleDateString("es-CO", { month: "short", year: "numeric" })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.2 }}
+                                        className="p-4 rounded-xl bg-accent/5 border border-accent/20"
+                                    >
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                                                <Shield className="w-5 h-5 text-accent" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">Plan</p>
+                                                <p className="text-lg font-bold text-foreground">Premium</p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Save Button */}
+                        <div className="flex justify-end gap-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => navigate("/dashboard")}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="bg-gradient-primary hover:opacity-90 text-primary-foreground shadow-glow"
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                        Guardando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="mr-2 w-4 h-4" />
+                                        Guardar Cambios
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
