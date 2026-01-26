@@ -154,9 +154,16 @@ const Profile = () => {
             if (error) throw error;
 
             toast.success("¡Perfil y configuración actualizados!");
-        } catch (error) {
+            loadProfile(); // Reload to sync
+        } catch (error: any) {
             console.error("Error saving profile:", error);
-            toast.error("Error al guardar el perfil");
+            if (error.code === "PGRST204" || error.message?.includes("column")) {
+                toast.error("Error de base de datos: Faltan columnas en la tabla profiles. Por favor, ejecuta el script SQL de reparación en Supabase.", {
+                    duration: 6000,
+                });
+            } else {
+                toast.error("Error al guardar el perfil: " + (error.message || "Error desconocido"));
+            }
         } finally {
             setIsSaving(false);
         }

@@ -64,12 +64,36 @@ const NewLoan = () => {
 
     useEffect(() => {
         loadClients();
+        loadUserDefaults();
         if (id) {
             loadLoanData();
         } else {
             setIsFetching(false);
         }
     }, [id]);
+
+    const loadUserDefaults = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("default_interest_rate, currency")
+                .eq("user_id", user.id)
+                .single();
+
+            if (profile) {
+                const data = profile as any;
+                setFormData(prev => ({
+                    ...prev,
+                    interestRate: data.default_interest_rate?.toString() || "20"
+                }));
+            }
+        } catch (error) {
+            console.error("Error loading user defaults:", error);
+        }
+    };
 
     const loadLoanData = async () => {
         try {

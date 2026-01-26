@@ -14,6 +14,7 @@ import Clients from "@/pages/Clients";
 import NewClient from "@/pages/NewClient";
 import Loans from "@/pages/Loans";
 import NewLoan from "@/pages/NewLoan";
+import LoanDetail from "@/pages/LoanDetail";
 import Simulator from "@/pages/Simulator";
 import Profile from "@/pages/Profile";
 import WhatsApp from "@/pages/WhatsApp";
@@ -66,6 +67,7 @@ const App = () => {
                 <Route path="/clients/:id" element={<NewClient />} />
                 <Route path="/loans" element={<Loans />} />
                 <Route path="/loans/new" element={<NewLoan />} />
+                <Route path="/loans/:id" element={<LoanDetail />} />
                 <Route path="/simulator" element={<Simulator />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/whatsapp" element={<WhatsApp />} />
