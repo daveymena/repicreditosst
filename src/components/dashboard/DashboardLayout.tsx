@@ -1,271 +1,226 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
-  DollarSign,
+  Banknote,
   Calculator,
+  MessageSquare,
   User,
   LogOut,
-  Banknote,
   Menu,
   X,
-  ChevronRight,
-  MessageSquare,
-  CreditCard
+  Bell,
+  Search,
+  Sparkles,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
+const menuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Users, label: "Clientes", path: "/clients" },
+  { icon: Banknote, label: "Préstamos", path: "/loans" },
+  { icon: Calculator, label: "Simulador", path: "/simulator" },
+  { icon: MessageSquare, label: "WhatsApp", path: "/whatsapp" },
+  { icon: User, label: "Mi Perfil", path: "/profile" },
+];
 
-// Componente de Espacio Publicitario (Placeholder)
-const AdSpace = ({ position }: { position: "sidebar" | "banner" | "mobile" }) => {
-
-  if (position === "sidebar") {
-    return (
-      <div className="mx-4 mt-auto mb-4 p-4 rounded-xl bg-muted/50 border border-dashed border-muted flex flex-col items-center justify-center text-center gap-2 min-h-[150px]">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Insignia Pro</span>
-        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-          <span className="text-xs font-bold text-primary">AD</span>
-        </div>
-        <p className="text-[10px] text-muted-foreground">Tu anuncio aquí</p>
-      </div>
-    );
-  }
-
-  if (position === "banner") {
-    return (
-      <div className="w-full h-[90px] bg-muted/30 border-y border-dashed border-muted flex items-center justify-center my-6">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Espacio Publicitario Premium</span>
-      </div>
-    );
-  }
-
-  return null;
-};
-
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
-  const navigate = useNavigate();
+const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 1024;
-      setIsMobile(mobile);
-      // En desktop, mantener el estado que el usuario prefiera o abierto por defecto
-      // En móvil, siempre cerrado al inicio
-      if (mobile) {
-        setIsSidebarOpen(false);
-      } else {
-        setIsSidebarOpen(true);
-      }
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    loadProfile();
   }, []);
+
+  const loadProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+      setProfile(data);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast({
-      title: "Sesión cerrada",
-      description: "Has cerrado sesión correctamente.",
-    });
-    navigate("/");
+    toast.success("Sesión cerrada");
+    navigate("/login");
   };
 
-  const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Users, label: "Clientes", path: "/clients" },
-    { icon: DollarSign, label: "Préstamos", path: "/loans" },
-    { icon: Calculator, label: "Simulador", path: "/simulator" },
-    { icon: MessageSquare, label: "WhatsApp", path: "/whatsapp" },
-    { icon: CreditCard, label: "Planes y Precios", path: "/pricing" },
-    { icon: User, label: "Perfil", path: "/profile" },
-  ];
-
-  const isActive = (path: string) => location.pathname === path;
-
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row overflow-hidden">
-      {/* Overlay for mobile */}
+    <div className="min-h-screen bg-background bg-gradient-mesh flex">
+      {/* Sidebar Desktop */}
+      <aside className="hidden lg:flex flex-col w-72 h-screen sticky top-0 bg-white/50 dark:bg-black/20 backdrop-blur-2xl border-r border-white/20 px-6 py-8 z-50">
+        <div className="flex items-center gap-3 mb-12 px-2">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow">
+            <Banknote className="text-white w-7 h-7" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-foreground">RapiCréditos</h1>
+            <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">SaaS Pro</p>
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-2">
+          {menuItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${isActive
+                    ? "bg-primary text-white shadow-glow"
+                    : "text-muted-foreground hover:bg-white/40 dark:hover:bg-white/5 hover:text-foreground"
+                  }`}
+              >
+                <item.icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? "text-white" : "text-muted-foreground group-hover:text-primary"}`} />
+                <span className="font-bold text-sm tracking-wide">{item.label}</span>
+                {isActive && <ChevronRight className="ml-auto w-4 h-4 text-white/50" />}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto pt-8 border-t border-white/20">
+          <div className="bg-white/40 dark:bg-white/5 p-4 rounded-[2rem] border border-white/20 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar className="w-10 h-10 border-2 border-primary/20">
+                <AvatarImage src={profile?.avatar_url} />
+                <AvatarFallback className="font-bold bg-primary text-white">{profile?.full_name?.charAt(0) || "U"}</AvatarFallback>
+              </Avatar>
+              <div className="overflow-hidden">
+                <p className="text-xs font-black truncate">{profile?.full_name || "Cargando..."}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{profile?.email}</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              className="w-full justify-start h-10 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive group"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-3 w-4 h-4 transition-transform group-hover:translate-x-1" />
+              <span className="text-xs font-bold uppercase tracking-widest">Cerrar Sesión</span>
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 min-w-0">
+        {/* Top Header */}
+        <header className="h-20 lg:h-24 sticky top-0 bg-background/60 backdrop-blur-xl border-b border-white/20 flex items-center justify-between px-6 lg:px-10 z-40">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden rounded-xl"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu className="w-6 h-6" />
+            </Button>
+            <div className="hidden md:flex items-center gap-3 bg-white/50 dark:bg-white/5 border border-white/20 px-4 py-2 rounded-2xl w-80">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <input
+                placeholder="Buscar clientes o cobros..."
+                className="bg-transparent border-none outline-none text-sm w-full placeholder:text-muted-foreground/60"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" className="rounded-2xl relative group">
+              <Bell className="w-5 h-5 text-muted-foreground" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full animate-pulse" />
+            </Button>
+            <Link to="/profile">
+              <Avatar className="w-10 h-10 border-2 border-primary/10 hover:border-primary/50 transition-all">
+                <AvatarImage src={profile?.avatar_url} />
+                <AvatarFallback className="font-bold bg-muted">{profile?.full_name?.charAt(0) || "U"}</AvatarFallback>
+              </Avatar>
+            </Link>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="p-6 lg:p-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {children}
+          </motion.div>
+        </div>
+      </main>
+
+      {/* Mobile Menu */}
       <AnimatePresence>
-        {isMobile && isSidebarOpen && (
+        {isMobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-          />
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="w-80 h-full bg-background p-6 flex flex-col pt-20 relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-6 right-6 rounded-xl"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="w-6 h-6" />
+              </Button>
+
+              <div className="space-y-2">
+                {menuItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${isActive
+                          ? "bg-primary text-white shadow-glow"
+                          : "text-muted-foreground active:bg-primary/10"
+                        }`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <item.icon className="w-6 h-6" />
+                      <span className="font-bold">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="mt-auto">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-14 rounded-2xl text-destructive border-destructive/20 active:bg-destructive/10"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-3 w-5 h-5" />
+                  <span className="font-bold">Cerrar Sesión</span>
+                </Button>
+              </div>
+            </motion.aside>
+          </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Sidebar */}
-      <motion.aside
-        className={`
-          fixed lg:sticky top-0 left-0 h-screen z-50
-          bg-card/50 backdrop-blur-xl border-r border-border
-          flex flex-col
-        `}
-        animate={{
-          width: isSidebarOpen ? (isMobile ? "80%" : "280px") : (isMobile ? "0px" : "80px"),
-          x: isMobile && !isSidebarOpen ? -100 : 0
-        }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
-        {/* Logo Section */}
-        <div className="h-20 flex items-center px-6 border-b border-border justify-between whitespace-nowrap overflow-hidden">
-          <Link to="/dashboard" className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-primary-glow flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
-              <Banknote className="w-6 h-6 text-white" />
-            </div>
-            <motion.span
-              animate={{ opacity: isSidebarOpen ? 1 : 0, display: isSidebarOpen ? "block" : "none" }}
-              className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70"
-            >
-              RapiCréditos
-            </motion.span>
-            {isSidebarOpen && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-[10px] text-muted-foreground font-medium tracking-wide mt-0.5"
-              >
-                Gestión Inteligente con IA
-              </motion.p>
-            )}
-          </Link>
-
-          {!isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="hidden lg:flex"
-            >
-              <ChevronRight className={`w-5 h-5 transition-transform duration-300 ${isSidebarOpen ? "rotate-180" : ""}`} />
-            </Button>
-          )}
-
-          {isMobile && (
-            <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)}>
-              <X className="w-6 h-6" />
-            </Button>
-          )}
-        </div>
-
-        {/* Navigation Section */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden scrollbar-thin">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => isMobile && setIsSidebarOpen(false)}
-              className="group relative flex items-center"
-            >
-              <div
-                className={`
-                  flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 w-full min-w-0
-                  ${isActive(item.path)
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }
-                `}
-              >
-                <item.icon className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive(item.path) ? "text-white" : ""}`} />
-
-                {isSidebarOpen && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                    className="font-medium whitespace-nowrap overflow-hidden text-ellipsis"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-
-                {/* Tooltip for collapsed mode */}
-                {!isSidebarOpen && !isMobile && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded-md shadow-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-border">
-                    {item.label}
-                  </div>
-                )}
-              </div>
-            </Link>
-          ))}
-
-          {/* Espacio Publicitario en Sidebar */}
-          {isSidebarOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mt-8"
-            >
-              <AdSpace position="sidebar" />
-            </motion.div>
-          )}
-        </nav>
-
-        {/* User Footer Section */}
-        <div className="p-4 border-t border-border mt-auto whitespace-nowrap overflow-hidden">
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className={`w-full justify-start text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors ${!isSidebarOpen && "px-3 justify-center"}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span className="ml-3 font-medium">Cerrar Sesión</span>}
-          </Button>
-        </div>
-      </motion.aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-screen relative overflow-hidden transition-all duration-300">
-
-        {/* Mobile Header */}
-        <header className="lg:hidden h-16 bg-background/80 backdrop-blur-md border-b border-border flex items-center justify-between px-4 sticky top-0 z-30">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSidebarOpen(true)}
-          >
-            <Menu className="w-6 h-6" />
-          </Button>
-
-          <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-glow">
-            RapiCréditos
-          </span>
-
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-            <User className="w-5 h-5 text-muted-foreground" />
-          </div>
-        </header>
-
-        {/* Content */}
-        <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
-
-          {/* Espacio Publicitario Banner Superior */}
-          <div className="w-full mb-6 lg:mb-8">
-            <AdSpace position="banner" />
-          </div>
-
-          <div className="max-w-7xl mx-auto space-y-6">
-            {children}
-          </div>
-        </div>
-      </main>
     </div>
   );
 };

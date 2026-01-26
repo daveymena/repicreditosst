@@ -1,12 +1,28 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowLeft, User, Phone, Mail, MapPin, Briefcase, Users, Save } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Briefcase,
+  Users,
+  Save,
+  Plus,
+  CreditCard,
+  DollarSign,
+  Heart,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -16,12 +32,12 @@ import {
 } from "@/components/ui/select";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const NewClient = () => {
   const { id } = useParams();
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
+  const [currentSection, setCurrentSection] = useState(1);
   const [formData, setFormData] = useState({
     full_name: "",
     document_type: "CC",
@@ -38,23 +54,12 @@ const NewClient = () => {
     notes: "",
   });
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  useEffect(() => {
-    if (id) {
-      loadClientData();
-    }
-  }, [id]);
+  useEffect(() => { if (id) loadClientData(); }, [id]);
 
   const loadClientData = async () => {
-    setIsFetching(true);
     try {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("id", id)
-        .single();
-
+      const { data, error } = await supabase.from("clients").select("*").eq("id", id).single();
       if (error) throw error;
       if (data) {
         setFormData({
@@ -73,11 +78,7 @@ const NewClient = () => {
           notes: data.notes || "",
         });
       }
-    } catch (error: any) {
-      toast({ title: "Error", description: "No se pudo cargar el cliente", variant: "destructive" });
-    } finally {
-      setIsFetching(false);
-    }
+    } catch (e) { toast.error("No se pudo cargar el cliente"); }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -86,62 +87,32 @@ const NewClient = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.full_name || !formData.phone) {
+      toast.error("Nombre y Teléfono son obligatorios");
+      return;
+    }
     setIsLoading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/login");
-        return;
-      }
+      if (!user) return;
 
-      const clientData = {
+      const payload = {
         user_id: user.id,
-        full_name: formData.full_name,
-        document_type: formData.document_type,
-        document_number: formData.document_number,
-        phone: formData.phone,
-        email: formData.email || null,
-        address: formData.address || null,
-        city: formData.city || null,
-        occupation: formData.occupation || null,
+        ...formData,
         monthly_income: formData.monthly_income ? parseFloat(formData.monthly_income) : null,
-        reference_name: formData.reference_name || null,
-        reference_phone: formData.reference_phone || null,
-        reference_relationship: formData.reference_relationship || null,
-        notes: formData.notes || null,
         updated_at: new Date().toISOString(),
       };
 
-      let error;
-      if (id) {
-        // Modo Edición
-        const { error: updateError } = await supabase
-          .from("clients")
-          .update(clientData)
-          .eq("id", id);
-        error = updateError;
-      } else {
-        // Modo Creación
-        const { error: insertError } = await supabase
-          .from("clients")
-          .insert(clientData);
-        error = insertError;
-      }
+      const { error } = id
+        ? await supabase.from("clients").update(payload).eq("id", id)
+        : await supabase.from("clients").insert(payload);
 
       if (error) throw error;
-
-      toast({
-        title: id ? "¡Cliente actualizado!" : "¡Cliente creado!",
-        description: `El cliente ha sido ${id ? 'actualizado' : 'registrado'} exitosamente.`,
-      });
+      toast.success(id ? "¡Datos actualizados!" : "¡Cliente registrado!");
       navigate("/clients");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo guardar el cliente",
-        variant: "destructive",
-      });
+    } catch (e: any) {
+      toast.error(e.message || "No se pudo guardar");
     } finally {
       setIsLoading(false);
     }
@@ -149,262 +120,193 @@ const NewClient = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
+      <div className="max-w-4xl mx-auto space-y-10 pb-20">
+        {/* Header Visual */}
+        <div className="flex items-center gap-6">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate("/clients")}
-            className="rounded-full"
+            className="w-14 h-14 rounded-2xl bg-white shadow-sm hover:bg-primary/5 hover:text-primary transition-all"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-6 h-6" />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Nuevo Cliente</h1>
-            <p className="text-muted-foreground">Registra un nuevo cliente en tu cartera</p>
+          <div className="space-y-1">
+            <h1 className="text-4xl font-black text-foreground">{id ? 'Editar Ficha' : 'Nueva Alta de Cliente'}</h1>
+            <p className="text-muted-foreground font-bold italic">Expediente digital de deudor</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Personal Information */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5 text-primary" />
-                  Información Personal
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-6">
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="full_name">Nombre completo *</Label>
-                  <Input
-                    id="full_name"
-                    placeholder="Juan Pérez"
-                    value={formData.full_name}
-                    onChange={(e) => handleChange("full_name", e.target.value)}
-                    required
-                  />
+        <form onSubmit={handleSubmit} className="grid md:grid-cols-4 gap-8">
+          {/* Quick Navigation / Stepper */}
+          <div className="md:col-span-1 space-y-4">
+            {[
+              { id: 1, label: "Identificación", icon: User },
+              { id: 2, label: "Ubicación", icon: MapPin },
+              { id: 3, label: "Finanzas", icon: DollarSign },
+              { id: 4, label: "Referencia", icon: Heart },
+              { id: 5, label: "Notas", icon: Briefcase }
+            ].map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setCurrentSection(s.id)}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${currentSection === s.id ? 'bg-primary text-white shadow-glow' : 'text-muted-foreground hover:bg-primary/5'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <s.icon className="w-4 h-4" /> {s.label}
                 </div>
+                {currentSection === s.id && <ChevronRight className="w-4 h-4 opacity-50" />}
+              </button>
+            ))}
+          </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="document_type">Tipo de documento</Label>
-                  <Select
-                    value={formData.document_type}
-                    onValueChange={(value) => handleChange("document_type", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CC">Cédula de Ciudadanía</SelectItem>
-                      <SelectItem value="CE">Cédula de Extranjería</SelectItem>
-                      <SelectItem value="TI">Tarjeta de Identidad</SelectItem>
-                      <SelectItem value="PP">Pasaporte</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="document_number">Número de documento</Label>
-                  <Input
-                    id="document_number"
-                    placeholder="1234567890"
-                    value={formData.document_number}
-                    onChange={(e) => handleChange("document_number", e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono *</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      placeholder="300 123 4567"
-                      value={formData.phone}
-                      onChange={(e) => handleChange("phone", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Correo electrónico</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="cliente@correo.com"
-                      value={formData.email}
-                      onChange={(e) => handleChange("email", e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Address & Work */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-primary" />
-                  Ubicación y Trabajo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-6">
-                <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="address">Dirección</Label>
-                  <Input
-                    id="address"
-                    placeholder="Calle 123 # 45-67"
-                    value={formData.address}
-                    onChange={(e) => handleChange("address", e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="city">Ciudad</Label>
-                  <Input
-                    id="city"
-                    placeholder="Bogotá"
-                    value={formData.city}
-                    onChange={(e) => handleChange("city", e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="occupation">Ocupación</Label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="occupation"
-                      placeholder="Comerciante"
-                      value={formData.occupation}
-                      onChange={(e) => handleChange("occupation", e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_income">Ingreso mensual</Label>
-                  <Input
-                    id="monthly_income"
-                    type="number"
-                    placeholder="2000000"
-                    value={formData.monthly_income}
-                    onChange={(e) => handleChange("monthly_income", e.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Reference */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  Referencia Personal
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="reference_name">Nombre de referencia</Label>
-                  <Input
-                    id="reference_name"
-                    placeholder="María García"
-                    value={formData.reference_name}
-                    onChange={(e) => handleChange("reference_name", e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="reference_phone">Teléfono de referencia</Label>
-                  <Input
-                    id="reference_phone"
-                    placeholder="300 987 6543"
-                    value={formData.reference_phone}
-                    onChange={(e) => handleChange("reference_phone", e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="reference_relationship">Parentesco</Label>
-                  <Input
-                    id="reference_relationship"
-                    placeholder="Hermana"
-                    value={formData.reference_relationship}
-                    onChange={(e) => handleChange("reference_relationship", e.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Notes */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Notas adicionales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  placeholder="Información adicional sobre el cliente..."
-                  value={formData.notes}
-                  onChange={(e) => handleChange("notes", e.target.value)}
-                  rows={4}
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Actions */}
-          <div className="flex gap-4 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/clients")}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="bg-gradient-primary hover:opacity-90 text-primary-foreground shadow-glow"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Save className="mr-2 w-5 h-5" />
-                  Guardar Cliente
-                </>
+          {/* Form Sections */}
+          <div className="md:col-span-3 space-y-8">
+            <AnimatePresence mode="wait">
+              {currentSection === 1 && (
+                <motion.div key="sec1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  <Card className="rounded-[2.5rem] border-none glass-card p-10">
+                    <CardHeader className="p-0 mb-8">
+                      <CardTitle className="text-2xl font-black">Identidad del Cliente</CardTitle>
+                      <CardDescription className="font-bold">Información básica y de contacto directo</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 space-y-6">
+                      <div className="space-y-3">
+                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Nombre Legal Completo</Label>
+                        <Input className="h-16 rounded-2xl bg-secondary/50 border-none px-6 font-bold text-lg" placeholder="Ejem: Juan Alberto Pérez..." value={formData.full_name} onChange={(e) => handleChange("full_name", e.target.value)} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Céluda / Identificación</Label>
+                          <div className="flex gap-2">
+                            <Select value={formData.document_type} onValueChange={(v) => handleChange("document_type", v)}>
+                              <SelectTrigger className="w-24 h-14 rounded-2xl bg-secondary/50 border-none font-black">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="CC">CC</SelectItem>
+                                <SelectItem value="CE">CE</SelectItem>
+                                <SelectItem value="NIT">NIT</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input className="h-14 flex-1 rounded-2xl bg-secondary/50 border-none px-6 font-bold" placeholder="Número..." value={formData.document_number} onChange={(e) => handleChange("document_number", e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">WhatsApp / Móvil</Label>
+                          <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" placeholder="300 --- -- --" value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Correo Corporativo/Personal</Label>
+                        <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" placeholder="correo@ejemplo.com" value={formData.email} onChange={(e) => handleChange("email", e.target.value)} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               )}
-            </Button>
+
+              {currentSection === 2 && (
+                <motion.div key="sec2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  <Card className="rounded-[2.5rem] border-none glass-card p-10">
+                    <CardHeader className="p-0 mb-8">
+                      <CardTitle className="text-2xl font-black">Residencia</CardTitle>
+                      <CardDescription className="font-bold">¿Dónde podemos localizar al deudor?</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 space-y-6">
+                      <div className="space-y-3">
+                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Dirección Exacta</Label>
+                        <Input className="h-16 rounded-2xl bg-secondary/50 border-none px-6 font-bold text-lg" placeholder="Calle, Carrera, Transversal..." value={formData.address} onChange={(e) => handleChange("address", e.target.value)} />
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Ciudad / Municipio</Label>
+                        <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" placeholder="Ejem: Medellín..." value={formData.city} onChange={(e) => handleChange("city", e.target.value)} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {currentSection === 3 && (
+                <motion.div key="sec3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  <Card className="rounded-[2.5rem] border-none glass-card p-10">
+                    <CardHeader className="p-0 mb-8">
+                      <CardTitle className="text-2xl font-black">Perfil Socioeconómico</CardTitle>
+                      <CardDescription className="font-bold">Capacidad real de pago e ingresos</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 space-y-6">
+                      <div className="space-y-3">
+                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Ocupación / Labor</Label>
+                        <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" placeholder="Ejem: Comerciante independiente..." value={formData.occupation} onChange={(e) => handleChange("occupation", e.target.value)} />
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Ingresos Mensuales Promedio</Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-primary w-5 h-5" />
+                          <Input type="number" className="h-16 pl-12 rounded-2xl bg-secondary/50 border-none px-6 font-black text-2xl" placeholder="0.00" value={formData.monthly_income} onChange={(e) => handleChange("monthly_income", e.target.value)} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {currentSection === 4 && (
+                <motion.div key="sec4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  <Card className="rounded-[2.5rem] border-none glass-card p-10">
+                    <CardHeader className="p-0 mb-8">
+                      <CardTitle className="text-2xl font-black">Referente de Confianza</CardTitle>
+                      <CardDescription className="font-bold">Persona que pueda avalar al cliente o darnos razón</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 space-y-6">
+                      <div className="space-y-3">
+                        <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Nombre de Referencia</Label>
+                        <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" placeholder="Nombre completo..." value={formData.reference_name} onChange={(e) => handleChange("reference_name", e.target.value)} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Teléfono Contacto</Label>
+                          <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" placeholder="300 -- --" value={formData.reference_phone} onChange={(e) => handleChange("reference_phone", e.target.value)} />
+                        </div>
+                        <div className="space-y-3">
+                          <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Parentesco / Vínculo</Label>
+                          <Input className="h-14 rounded-2xl bg-secondary/50 border-none px-6 font-bold" placeholder="Ejem: Hermano, Colega..." value={formData.reference_relationship} onChange={(e) => handleChange("reference_relationship", e.target.value)} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {currentSection === 5 && (
+                <motion.div key="sec5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  <Card className="rounded-[2.5rem] border-none glass-card p-10">
+                    <CardHeader className="p-0 mb-8">
+                      <CardTitle className="text-2xl font-black">Observaciones</CardTitle>
+                      <CardDescription className="font-bold">Notas internas sobre el perfil de riesgo o carácter</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 space-y-6">
+                      <Textarea className="min-h-[200px] rounded-2xl bg-secondary/50 border-none px-6 py-4 font-medium" placeholder="Escribe aquí cualquier detalle relevante..." value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} />
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex justify-between items-center bg-white/50 backdrop-blur-xl p-6 rounded-[2rem] border border-white/20">
+              <Button type="button" variant="ghost" className="h-14 rounded-2xl px-8 font-black text-muted-foreground" onClick={() => navigate("/clients")}>DESCARTAR</Button>
+              <div className="flex gap-4">
+                {currentSection > 1 && <Button type="button" variant="outline" className="h-14 rounded-2xl px-6 border-none bg-muted font-black" onClick={() => setCurrentSection(s => s - 1)}>ATRÁS</Button>}
+                {currentSection < 5 ? (
+                  <Button type="button" className="h-14 rounded-2xl px-8 bg-black text-white font-black" onClick={() => setCurrentSection(s => s + 1)}>SIGUIENTE <ChevronRight className="ml-2 w-4 h-4" /></Button>
+                ) : (
+                  <Button type="submit" disabled={isLoading} className="h-14 rounded-2xl px-10 bg-gradient-primary shadow-glow text-white font-black button-shimmer">
+                    <Save className="mr-2 w-5 h-5" /> {isLoading ? "GUARDANDO..." : "FINALIZAR REGISTRO"}
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </form>
       </div>
