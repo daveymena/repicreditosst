@@ -77,7 +77,9 @@ interface Payment {
 }
 
 
-import { calculateEndDate, generateSchedule, formatCurrency, Frequency } from "@/lib/loanUtils";
+import { calculateEndDate, generateSchedule, Frequency } from "@/lib/loanUtils";
+import { jsPDF } from "jspdf";
+import { formatCurrency } from "@/lib/utils";
 
 const LoanDetail = () => {
     const { id } = useParams();
@@ -237,69 +239,69 @@ const LoanDetail = () => {
     const handleDownloadReceipt = (payment: Payment) => {
         if (!loan) return;
 
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
+        const doc = new jsPDF({
+            unit: 'mm',
+            format: [80, 150] // Formato ticket
+        });
 
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Recibo de Pago - ${loan.loan_number}</title>
-                    <style>
-                        body { font-family: 'Courier New', Courier, monospace; width: 300px; padding: 20px; border: 1px dashed #000; }
-                        .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
-                        .item { display: flex; justify-content: space-between; margin: 5px 0; }
-                        .amount { font-size: 20px; font-weight: bold; text-align: center; margin: 15px 0; }
-                        .footer { text-align: center; margin-top: 20px; font-size: 12px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <strong>RAPICRÉDITOS SAAS</strong><br>
-                        RECIBO DE CAJA
-                    </div>
-                    <div class="item"><span>Fecha:</span> <span>${new Date(payment.payment_date).toLocaleString()}</span></div>
-                    <div class="item"><span>Crédito:</span> <span>${loan.loan_number}</span></div>
-                    <div class="item"><span>Cliente:</span> <span>${loan.clients?.full_name}</span></div>
-                    <div class="item"><span>Método:</span> <span>${payment.payment_method}</span></div>
-                    <div class="amount">${formatCurrency(payment.amount)}</div>
-                    <div class="item"><span>Concepto:</span> <span>Abono #${payment.payment_number}</span></div>
-                    <div class="footer">¡SOPORTE DE PAGO EXITOSO!</div>
-                    <script>window.onload = () => { window.print(); window.close(); }</script>
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
+        doc.setFont("courier", "bold");
+        doc.setFontSize(14);
+        doc.text("RAPICREDITOS SAAS", 40, 15, { align: "center" });
+
+        doc.setFontSize(10);
+        doc.text("RECIBO DE CAJA", 40, 22, { align: "center" });
+        doc.line(10, 25, 70, 25);
+
+        doc.setFont("courier", "normal");
+        doc.text(`Fecha: ${new Date(payment.payment_date).toLocaleDateString()}`, 10, 35);
+        doc.text(`Credito: ${loan.loan_number}`, 10, 42);
+        doc.text(`Cliente: ${loan.clients?.full_name}`, 10, 49);
+        doc.text(`Metodo: ${payment.payment_method}`, 10, 56);
+
+        doc.setFontSize(16);
+        doc.setFont("courier", "bold");
+        doc.text(formatCurrency(payment.amount), 40, 70, { align: "center" });
+
+        doc.setFontSize(10);
+        doc.text(`Concepto: Abono #${payment.payment_number}`, 10, 85);
+
+        doc.line(10, 95, 70, 95);
+        doc.text("¡PAGO EXITOSO!", 40, 105, { align: "center" });
+
+        doc.save(`Recibo_${loan.loan_number}_Abono${payment.payment_number}.pdf`);
+        toast.success("Recibo descargado correctamente");
     };
 
     const handleDownloadPazYSalvo = () => {
         if (!loan) return;
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
+
+        const doc = new jsPDF();
         const date = new Date().toLocaleDateString();
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Paz y Salvo - ${loan.loan_number}</title>
-                    <style>
-                        body { font-family: sans-serif; padding: 40px; line-height: 1.6; }
-                        .header { text-align: center; margin-bottom: 40px; }
-                        .stamp { border: 4px solid #059669; color: #059669; display: inline-block; padding: 10px 20px; font-weight: bold; transform: rotate(-5deg); margin-top: 20px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h1>CERTIFICADO DE PAZ Y SALVO</h1>
-                        <p>Orden # ${loan.loan_number}</p>
-                    </div>
-                    <p>Se certifica que <strong>${loan.clients?.full_name}</strong> ha cancelado la totalidad de sus obligaciones vinculadas al préstamo <strong>${loan.loan_number}</strong>.</p>
-                    <p>Monto Pagado: ${formatCurrency(loan.total_amount)}</p>
-                    <p>Fecha de Expedición: ${date}</p>
-                    <div style="text-align:center"><div class="stamp">TOTALMENTE PAGADO</div></div>
-                    <script>window.onload = () => { window.print(); window.close(); }</script>
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
+
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text("CERTIFICADO DE PAZ Y SALVO", 105, 40, { align: "center" });
+
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Orden #: ${loan.loan_number}`, 105, 50, { align: "center" });
+
+        const text = `Se certifica que ${loan.clients?.full_name} ha cancelado la totalidad de sus obligaciones vinculadas al préstamo ${loan.loan_number}, por un monto total de ${formatCurrency(loan.total_amount)}.`;
+
+        const splitText = doc.splitTextToSize(text, 170);
+        doc.text(splitText, 20, 80);
+
+        doc.text(`Fecha de Expedición: ${date}`, 20, 120);
+
+        doc.setLineWidth(1);
+        doc.setDrawColor(5, 150, 105);
+        doc.rect(70, 140, 70, 20);
+        doc.setTextColor(5, 150, 105);
+        doc.setFontSize(14);
+        doc.text("TOTALMENTE PAGADO", 105, 152, { align: "center" });
+
+        doc.save(`Paz_y_Salvo_${loan.loan_number}.pdf`);
+        toast.success("Certificado descargado");
     };
 
     if (isLoading) return <DashboardLayout><div className="flex items-center justify-center min-h-[400px]"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div></DashboardLayout>;

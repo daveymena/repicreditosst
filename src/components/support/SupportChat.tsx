@@ -88,21 +88,24 @@ const SupportChat = () => {
 
         } catch (error: any) {
             clearTimeout(timeoutId);
-            console.warn("RapiBot: Problema o demora en IA", error);
+            console.error("RapiBot Detalle Error:", error);
 
-            const fallback = generateResponse(userMsg.text);
+            let errorMessage = "Lo siento, tuve un problema al conectar con mi cerebro (Ollama).";
+
+            if (error.name === 'AbortError') {
+                errorMessage = "⌛ Mi cerebro está tardando mucho en responder (más de 60s). Por favor, revisa si Ollama está muy cargado.";
+            } else if (error instanceof TypeError) {
+                errorMessage = "⚠️ Error de red/CORS. Asegúrate de configurar OLLAMA_ORIGINS=\"*\" en tu servidor de Easypanel para que pueda responderte.";
+            }
+
+            const fallback = generateResponse(inputValue || userMsg.text);
+
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
-                text: error.name === 'AbortError'
-                    ? `⌛ La IA está tardando más de lo normal en pensar. Por ahora, aquí tienes una respuesta rápida: ${fallback}`
-                    : fallback,
+                text: `${errorMessage}\n\nRespuesta de respaldo local: ${fallback}`,
                 sender: "bot",
                 timestamp: new Date()
             }]);
-
-            if (error instanceof TypeError) {
-                toast.error("Error de conexión. Revisa CORS en Easypanel.");
-            }
         } finally {
             setIsTyping(false);
         }
