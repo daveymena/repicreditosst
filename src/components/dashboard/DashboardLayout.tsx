@@ -251,8 +251,18 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             RapiCréditos
           </span>
 
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-            <User className="w-5 h-5 text-muted-foreground" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="w-10 h-10 rounded-full text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+              <User className="w-5 h-5 text-primary" />
+            </div>
           </div>
         </header>
 
