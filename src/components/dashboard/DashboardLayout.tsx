@@ -27,7 +27,7 @@ interface DashboardLayoutProps {
 }
 
 // Componente de Espacio Publicitario (Placeholder)
-const AdSpace = ({ position }: { position: "sidebar" | "banner" | "mobile" }) => {
+const AdSpace = ({ position }: { position: "sidebar" | "banner" | "mobile" | "fixed-bottom" | "footer" }) => {
 
   if (position === "sidebar") {
     return (
@@ -49,6 +49,18 @@ const AdSpace = ({ position }: { position: "sidebar" | "banner" | "mobile" }) =>
           height={90}
           width={728}
         />
+      </div>
+    );
+  }
+
+  if (position === "footer") {
+    return (
+      <div className="w-full h-[90px] bg-muted/20 border-t border-dashed border-muted/50 flex flex-col items-center justify-center mt-12 mb-4">
+        <span className="text-[10px] text-muted-foreground uppercase opacity-50 mb-1">Publicidad de Pie de Página</span>
+        <div className="w-[728px] max-w-full h-[90px] flex items-center justify-center">
+          {/* Adsterra 728x90 */}
+          <div className="w-full h-full bg-primary/5 rounded-inner animate-pulse flex items-center justify-center text-[10px] text-muted-foreground">Banner 728x90</div>
+        </div>
       </div>
     );
   }
@@ -279,12 +291,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <AdSpace position="banner" />
           </div>
 
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6 pb-4">
             {children}
+            {/* Pie de Página Publicitario */}
+            <AdSpace position="footer" />
           </div>
         </div>
       </main>
       <SupportChat />
+      <AdSpace position="fixed-bottom" />
     </div>
   );
 };
