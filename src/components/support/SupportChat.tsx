@@ -49,10 +49,13 @@ const SupportChat = () => {
         setInputValue("");
         setIsTyping(true);
 
-        try {
-            console.log("RapiBot: Iniciando comunicación...");
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // Darle 1 minuto completo
 
-            const CONTEXT = "ERES RAPIBOT, ASISTENTE DE RAPICRÉDITOS. RESPONDE CORTO Y AMABLE.";
+        try {
+            console.log("RapiBot: Llamando a la IA (esperando respuesta)...");
+
+            const CONTEXT = "Eres RapiBot, el asistente de RapiCréditos. Responde de forma breve y profesional.";
 
             const response = await fetch("https://ollama-ollama.ginee6.easypanel.host/api/generate", {
                 method: "POST",
@@ -61,9 +64,16 @@ const SupportChat = () => {
                     model: "llama3.2:1b",
                     prompt: `${CONTEXT}\n\nPregunta: ${userMsg.text}\nRespuesta:`,
                     stream: false,
-                    options: { temperature: 0.3 }
-                })
+                    options: {
+                        temperature: 0.3,
+                        num_thread: 4,  // Usar hilos para mayor velocidad
+                        num_predict: 200 // Limitar longitud para rapidez
+                    }
+                }),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) throw new Error("API Error");
 
@@ -76,13 +86,16 @@ const SupportChat = () => {
                 timestamp: new Date()
             }]);
 
-        } catch (error) {
-            console.warn("RapiBot Fallback:", error);
-            const fallback = generateResponse(userMsg.text);
+        } catch (error: any) {
+            clearTimeout(timeoutId);
+            console.warn("RapiBot: Problema o demora en IA", error);
 
+            const fallback = generateResponse(userMsg.text);
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
-                text: fallback,
+                text: error.name === 'AbortError'
+                    ? `⌛ La IA está tardando más de lo normal en pensar. Por ahora, aquí tienes una respuesta rápida: ${fallback}`
+                    : fallback,
                 sender: "bot",
                 timestamp: new Date()
             }]);
