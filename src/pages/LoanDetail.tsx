@@ -238,70 +238,81 @@ const LoanDetail = () => {
 
     const handleDownloadReceipt = (payment: Payment) => {
         if (!loan) return;
+        const toastId = toast.loading("Generando recibo PDF...");
 
-        const doc = new jsPDF({
-            unit: 'mm',
-            format: [80, 150] // Formato ticket
-        });
+        try {
+            // Usar dimensiones estándar de ticket (80mm)
+            const doc = new jsPDF('p', 'mm', [80, 150]);
 
-        doc.setFont("courier", "bold");
-        doc.setFontSize(14);
-        doc.text("RAPICREDITOS SAAS", 40, 15, { align: "center" });
+            doc.setFont("courier", "bold");
+            doc.setFontSize(14);
+            doc.text("RAPICREDITOS SAAS", 40, 15, { align: "center" });
 
-        doc.setFontSize(10);
-        doc.text("RECIBO DE CAJA", 40, 22, { align: "center" });
-        doc.line(10, 25, 70, 25);
+            doc.setFontSize(10);
+            doc.text("RECIBO DE CAJA", 40, 22, { align: "center" });
+            doc.line(10, 25, 70, 25);
 
-        doc.setFont("courier", "normal");
-        doc.text(`Fecha: ${new Date(payment.payment_date).toLocaleDateString()}`, 10, 35);
-        doc.text(`Credito: ${loan.loan_number}`, 10, 42);
-        doc.text(`Cliente: ${loan.clients?.full_name}`, 10, 49);
-        doc.text(`Metodo: ${payment.payment_method}`, 10, 56);
+            doc.setFont("courier", "normal");
+            doc.text(`Fecha: ${new Date(payment.payment_date).toLocaleDateString()}`, 10, 35);
+            doc.text(`Credito: ${loan.loan_number}`, 10, 42);
+            doc.text(`Cliente: ${loan.clients?.full_name}`, 10, 49);
+            doc.text(`Metodo: ${payment.payment_method}`, 10, 56);
 
-        doc.setFontSize(16);
-        doc.setFont("courier", "bold");
-        doc.text(formatCurrency(payment.amount), 40, 70, { align: "center" });
+            doc.setFontSize(16);
+            doc.setFont("courier", "bold");
+            doc.text(formatCurrency(payment.amount), 40, 70, { align: "center" });
 
-        doc.setFontSize(10);
-        doc.text(`Concepto: Abono #${payment.payment_number}`, 10, 85);
+            doc.setFontSize(10);
+            doc.text(`Concepto: Abono #${payment.payment_number}`, 10, 85);
 
-        doc.line(10, 95, 70, 95);
-        doc.text("¡PAGO EXITOSO!", 40, 105, { align: "center" });
+            doc.line(10, 95, 70, 95);
+            doc.text("¡PAGO EXITOSO!", 40, 105, { align: "center" });
 
-        doc.save(`Recibo_${loan.loan_number}_Abono${payment.payment_number}.pdf`);
-        toast.success("Recibo descargado correctamente");
+            const fileName = `Recibo_${loan.loan_number}_A${payment.payment_number}.pdf`;
+            doc.save(fileName);
+            toast.success("Recibo descargado", { id: toastId });
+        } catch (error) {
+            console.error("PDF Error:", error);
+            toast.error("Error al generar el PDF", { id: toastId });
+        }
     };
 
     const handleDownloadPazYSalvo = () => {
         if (!loan) return;
+        const toastId = toast.loading("Generando Paz y Salvo...");
 
-        const doc = new jsPDF();
-        const date = new Date().toLocaleDateString();
+        try {
+            const doc = new jsPDF();
+            const date = new Date().toLocaleDateString();
 
-        doc.setFontSize(22);
-        doc.setFont("helvetica", "bold");
-        doc.text("CERTIFICADO DE PAZ Y SALVO", 105, 40, { align: "center" });
+            doc.setFontSize(22);
+            doc.setFont("helvetica", "bold");
+            doc.text("CERTIFICADO DE PAZ Y SALVO", 105, 40, { align: "center" });
 
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Orden #: ${loan.loan_number}`, 105, 50, { align: "center" });
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Orden #: ${loan.loan_number}`, 105, 50, { align: "center" });
 
-        const text = `Se certifica que ${loan.clients?.full_name} ha cancelado la totalidad de sus obligaciones vinculadas al préstamo ${loan.loan_number}, por un monto total de ${formatCurrency(loan.total_amount)}.`;
+            const text = `Se certifica que ${loan.clients?.full_name} ha cancelado la totalidad de sus obligaciones vinculadas al préstamo ${loan.loan_number}, por un monto total de ${formatCurrency(loan.total_amount)}.`;
 
-        const splitText = doc.splitTextToSize(text, 170);
-        doc.text(splitText, 20, 80);
+            const splitText = doc.splitTextToSize(text, 170);
+            doc.text(splitText, 20, 80);
 
-        doc.text(`Fecha de Expedición: ${date}`, 20, 120);
+            doc.text(`Fecha de Expedición: ${date}`, 20, 120);
 
-        doc.setLineWidth(1);
-        doc.setDrawColor(5, 150, 105);
-        doc.rect(70, 140, 70, 20);
-        doc.setTextColor(5, 150, 105);
-        doc.setFontSize(14);
-        doc.text("TOTALMENTE PAGADO", 105, 152, { align: "center" });
+            doc.setLineWidth(1);
+            doc.setDrawColor(5, 150, 105);
+            doc.rect(70, 140, 70, 20);
+            doc.setTextColor(5, 150, 105);
+            doc.setFontSize(14);
+            doc.text("TOTALMENTE PAGADO", 105, 152, { align: "center" });
 
-        doc.save(`Paz_y_Salvo_${loan.loan_number}.pdf`);
-        toast.success("Certificado descargado");
+            doc.save(`Paz_y_Salvo_${loan.loan_number}.pdf`);
+            toast.success("Paz y Salvo descargado", { id: toastId });
+        } catch (error) {
+            console.error("PDF Error:", error);
+            toast.error("Error al generar Paz y Salvo", { id: toastId });
+        }
     };
 
     if (isLoading) return <DashboardLayout><div className="flex items-center justify-center min-h-[400px]"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div></DashboardLayout>;
