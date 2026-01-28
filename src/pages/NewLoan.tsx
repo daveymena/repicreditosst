@@ -313,31 +313,30 @@ const NewLoan = () => {
                                 <CardContent className="space-y-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="clientSearch">Buscar Cliente *</Label>
-                                        <div className="relative">
-                                            <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                                            <Input
-                                                id="clientSearch"
-                                                list="clientsList"
-                                                placeholder="Escribe para buscar (Nombre o Teléfono)..."
-                                                onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    const selected = clients.find(c =>
-                                                        c.full_name === value ||
-                                                        `${c.full_name} - ${c.phone}` === value
-                                                    );
-                                                    if (selected) {
-                                                        setFormData({ ...formData, clientId: selected.id });
-                                                    }
-                                                }}
-                                                className="pl-10"
-                                                autoComplete="off"
-                                            />
-                                            <datalist id="clientsList">
-                                                {clients.map((client) => (
-                                                    <option key={client.id} value={`${client.full_name} - ${client.phone}`} />
-                                                ))}
-                                            </datalist>
-                                        </div>
+                                        <Select
+                                            value={formData.clientId}
+                                            onValueChange={(value) => {
+                                                setFormData({ ...formData, clientId: value });
+                                            }}
+                                        >
+                                            <SelectTrigger id="clientSelect" className="pl-10 h-10 w-full">
+                                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                                <SelectValue placeholder="Selecciona un cliente de la lista" />
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-[300px]">
+                                                {clients.length > 0 ? (
+                                                    clients.map((client) => (
+                                                        <SelectItem key={client.id} value={client.id}>
+                                                            {client.full_name} - {client.phone}
+                                                        </SelectItem>
+                                                    ))
+                                                ) : (
+                                                    <div className="p-2 text-sm text-muted-foreground text-center">
+                                                        No hay clientes activos.
+                                                    </div>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
                                         {formData.clientId && (
                                             <p className="text-xs text-green-600 flex items-center mt-1">
                                                 <CheckCircle className="w-3 h-3 mr-1" />
