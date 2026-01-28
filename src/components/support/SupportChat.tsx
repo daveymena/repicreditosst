@@ -53,11 +53,12 @@ const SupportChat = () => {
         const timeoutId = setTimeout(() => controller.abort(), 60000); // Darle 1 minuto completo
 
         try {
-            console.log("RapiBot: Llamando a la IA (esperando respuesta)...");
+            const url = "https://ollama-ollama.ginee6.easypanel.host/api/generate";
+            console.log(`RapiBot: Enviando petición a ${url}...`);
 
             const CONTEXT = "Eres RapiBot, el asistente de RapiCréditos. Responde de forma breve y profesional.";
 
-            const response = await fetch("https://ollama-ollama.ginee6.easypanel.host/api/generate", {
+            const response = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -66,8 +67,8 @@ const SupportChat = () => {
                     stream: false,
                     options: {
                         temperature: 0.3,
-                        num_thread: 4,  // Usar hilos para mayor velocidad
-                        num_predict: 200 // Limitar longitud para rapidez
+                        num_thread: 4,
+                        num_predict: 200
                     }
                 }),
                 signal: controller.signal
