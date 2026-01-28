@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -27,6 +28,15 @@ import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { calculateEndDate, generateSchedule, calculateLoanDetails, formatCurrency, Frequency, InterestType } from "@/lib/loanUtils";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 
 interface Client {
     id: string;
@@ -48,15 +58,16 @@ const NewLoan = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
     const [calculation, setCalculation] = useState<LoanCalculation | null>(null);
+    const [schedule, setSchedule] = useState<any[]>([]);
 
     // Form state
     const [formData, setFormData] = useState({
         clientId: "",
         principalAmount: "",
         interestRate: "20",
-        interestType: "simple",
+        interestType: "simple" as InterestType,
         installments: "12",
-        frequency: "monthly",
+        frequency: "monthly" as Frequency,
         startDate: new Date().toISOString().split("T")[0],
         notes: "",
         status: "active" as string
@@ -79,15 +90,14 @@ const NewLoan = () => {
 
             const { data: profile } = await supabase
                 .from("profiles")
-                .select("default_interest_rate, currency")
+                .select("default_interest_rate")
                 .eq("user_id", user.id)
                 .single();
 
             if (profile) {
-                const data = profile as any;
                 setFormData(prev => ({
                     ...prev,
-                    interestRate: data.default_interest_rate?.toString() || "20"
+                    interestRate: profile.default_interest_rate?.toString() || "20"
                 }));
             }
         } catch (error) {
@@ -109,9 +119,9 @@ const NewLoan = () => {
                     clientId: data.client_id,
                     principalAmount: data.principal_amount.toString(),
                     interestRate: data.interest_rate?.toString() || "20",
-                    interestType: data.interest_type || "simple",
+                    interestType: (data.interest_type as InterestType) || "simple",
                     installments: data.installments?.toString() || "12",
-                    frequency: data.frequency || "monthly",
+                    frequency: (data.frequency as Frequency) || "monthly",
                     startDate: data.start_date,
                     notes: data.notes || "",
                     status: data.status || "active"
@@ -139,6 +149,7 @@ const NewLoan = () => {
         formData.interestRate,
         formData.installments,
         formData.frequency,
+        formData.interestType,
         formData.startDate,
     ]);
 
@@ -167,43 +178,31 @@ const NewLoan = () => {
 
     const calculateLoan = () => {
         const principal = parseFloat(formData.principalAmount);
-        const rate = parseFloat(formData.interestRate) / 100;
-        const installments = parseInt(formData.installments);
+        const rate = parseFloat(formData.interestRate);
+        const numInstallments = parseInt(formData.installments);
 
-        if (isNaN(principal) || isNaN(rate) || isNaN(installments)) {
+        if (isNaN(principal) || isNaN(rate) || isNaN(numInstallments)) {
             return;
         }
 
-        // Simple interest calculation
-        const totalInterest = principal * rate;
-        const totalAmount = principal + totalInterest;
-        const installmentAmount = totalAmount / installments;
+        const details = calculateLoanDetails(principal, rate, numInstallments, formData.interestType);
+        const endDate = calculateEndDate(formData.startDate, formData.frequency, numInstallments);
 
-        // Calculate end date based on frequency
-        const startDate = new Date(formData.startDate);
-        let endDate = new Date(startDate);
-
-        switch (formData.frequency) {
-            case "daily":
-                endDate.setDate(endDate.getDate() + installments);
-                break;
-            case "weekly":
-                endDate.setDate(endDate.getDate() + installments * 7);
-                break;
-            case "biweekly":
-                endDate.setDate(endDate.getDate() + installments * 15);
-                break;
-            case "monthly":
-                endDate.setMonth(endDate.getMonth() + installments);
-                break;
-        }
+        const generatedSchedule = generateSchedule(
+            formData.startDate,
+            formData.frequency,
+            numInstallments,
+            details.installmentAmount
+        );
 
         setCalculation({
-            totalInterest,
-            totalAmount,
-            installmentAmount,
-            endDate: endDate.toISOString().split("T")[0],
+            totalInterest: details.totalInterest,
+            totalAmount: details.totalAmount,
+            installmentAmount: details.installmentAmount,
+            endDate,
         });
+
+        setSchedule(generatedSchedule);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -228,52 +227,55 @@ const NewLoan = () => {
                 return;
             }
 
-            // Generate loan number
-            const loanNumber = `L - ${Date.now().toString().slice(-8)} `;
-
-            const loanData = {
+            const loanData: any = {
                 user_id: user.id,
                 client_id: formData.clientId,
-                loan_number: loanNumber,
                 principal_amount: parseFloat(formData.principalAmount),
                 interest_rate: parseFloat(formData.interestRate),
                 interest_type: formData.interestType,
                 total_interest: calculation.totalInterest,
                 total_amount: calculation.totalAmount,
-                remaining_amount: calculation.totalAmount,
-                paid_amount: 0,
+                remaining_amount: id ? undefined : calculation.totalAmount, // Solo al crear
                 installments: parseInt(formData.installments),
-                paid_installments: 0,
                 installment_amount: calculation.installmentAmount,
                 frequency: formData.frequency,
                 start_date: formData.startDate,
                 end_date: calculation.endDate,
-                status: "active",
                 notes: formData.notes || null,
             };
 
-            const { error } = await supabase.from("loans").insert([loanData]);
+            if (id) {
+                const { error } = await supabase
+                    .from("loans")
+                    .update(loanData)
+                    .eq("id", id);
+                if (error) throw error;
+                toast.success("¡Préstamo actualizado exitosamente!");
+            } else {
+                // Generate loan number only for new loans
+                loanData.loan_number = `L-${Date.now().toString().slice(-8)}`;
+                loanData.paid_amount = 0;
+                loanData.paid_installments = 0;
+                loanData.remaining_amount = calculation.totalAmount;
+                loanData.status = "active";
 
-            if (error) throw error;
+                const { error } = await supabase.from("loans").insert([loanData]);
+                if (error) throw error;
+                toast.success("¡Préstamo creado exitosamente!");
+            }
 
-            toast.success("¡Préstamo creado exitosamente!");
             navigate("/loans");
         } catch (error) {
-            console.error("Error creating loan:", error);
-            toast.error("Error al crear el préstamo");
+            console.error("Error saving loan:", error);
+            toast.error("Error al guardar el préstamo");
         } finally {
             setIsLoading(false);
         }
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("es-CO", {
-            style: "currency",
-            currency: "COP",
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(amount);
-    };
+    if (isFetching) {
+        return <DashboardLayout><div className="flex items-center justify-center min-h-[400px]"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div></DashboardLayout>;
+    }
 
     return (
         <DashboardLayout>
@@ -321,7 +323,7 @@ const NewLoan = () => {
                                                     const value = e.target.value;
                                                     const selected = clients.find(c =>
                                                         c.full_name === value ||
-                                                        `${c.full_name} - ${c.phone} ` === value
+                                                        `${c.full_name} - ${c.phone}` === value
                                                     );
                                                     if (selected) {
                                                         setFormData({ ...formData, clientId: selected.id });
@@ -332,7 +334,7 @@ const NewLoan = () => {
                                             />
                                             <datalist id="clientsList">
                                                 {clients.map((client) => (
-                                                    <option key={client.id} value={`${client.full_name} - ${client.phone} `} />
+                                                    <option key={client.id} value={`${client.full_name} - ${client.phone}`} />
                                                 ))}
                                             </datalist>
                                         </div>
@@ -427,7 +429,7 @@ const NewLoan = () => {
                                             <Label htmlFor="frequency">Frecuencia de Pago *</Label>
                                             <Select
                                                 value={formData.frequency}
-                                                onValueChange={(value) =>
+                                                onValueChange={(value: Frequency) =>
                                                     setFormData({ ...formData, frequency: value })
                                                 }
                                             >
@@ -465,7 +467,7 @@ const NewLoan = () => {
                                             <Label htmlFor="interestType">Tipo de Interés</Label>
                                             <Select
                                                 value={formData.interestType}
-                                                onValueChange={(value) =>
+                                                onValueChange={(value: InterestType) =>
                                                     setFormData({ ...formData, interestType: value })
                                                 }
                                             >
@@ -473,8 +475,8 @@ const NewLoan = () => {
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="simple">Interés Simple</SelectItem>
-                                                    <SelectItem value="compound">Interés Compuesto</SelectItem>
+                                                    <SelectItem value="simple">Interés Simple / Fijo</SelectItem>
+                                                    <SelectItem value="compound">Interés Compuesto (Francés)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -494,6 +496,39 @@ const NewLoan = () => {
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Schedule Preview */}
+                            {schedule.length > 0 && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Plan de Pagos Sugerido</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="max-h-[300px] overflow-y-auto">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Cuota</TableHead>
+                                                        <TableHead>Fecha</TableHead>
+                                                        <TableHead className="text-right">Monto</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {schedule.map((item) => (
+                                                        <TableRow key={item.number}>
+                                                            <TableCell>#{item.number}</TableCell>
+                                                            <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
+                                                            <TableCell className="text-right font-medium">
+                                                                {formatCurrency(item.amount)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
                         </div>
 
                         {/* Calculation Summary */}
@@ -517,7 +552,7 @@ const NewLoan = () => {
                                                     Monto del Préstamo
                                                 </p>
                                                 <p className="text-2xl font-bold text-foreground">
-                                                    {formatCurrency(parseFloat(formData.principalAmount))}
+                                                    {formatCurrency(parseFloat(formData.principalAmount) || 0)}
                                                 </p>
                                             </div>
 
@@ -554,11 +589,9 @@ const NewLoan = () => {
 
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-sm text-muted-foreground">
-                                                        Fecha de Inicio
+                                                        Frecuencia
                                                     </span>
-                                                    <span className="font-semibold">
-                                                        {new Date(formData.startDate).toLocaleDateString("es-CO")}
-                                                    </span>
+                                                    <span className="font-semibold text-capitalize">{formData.frequency}</span>
                                                 </div>
 
                                                 <div className="flex justify-between items-center">

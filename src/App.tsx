@@ -68,6 +68,7 @@ const App = () => {
                 <Route path="/loans" element={<Loans />} />
                 <Route path="/loans/new" element={<NewLoan />} />
                 <Route path="/loans/:id" element={<LoanDetail />} />
+                <Route path="/loans/:id/edit" element={<NewLoan />} />
                 <Route path="/simulator" element={<Simulator />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/whatsapp" element={<WhatsApp />} />

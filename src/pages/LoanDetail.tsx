@@ -50,6 +50,8 @@ interface Loan {
     remaining_amount: number;
     paid_amount: number;
     interest_rate: number;
+    interest_type?: string;
+    installment_amount: number;
     installments: number;
     paid_installments: number;
     frequency: string;
@@ -74,11 +76,15 @@ interface Payment {
     notes: string;
 }
 
+
+import { calculateEndDate, generateSchedule, formatCurrency, Frequency } from "@/lib/loanUtils";
+
 const LoanDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [loan, setLoan] = useState<Loan | null>(null);
     const [payments, setPayments] = useState<Payment[]>([]);
+    const [schedule, setSchedule] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingPayment, setIsSavingPayment] = useState(false);
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -87,7 +93,8 @@ const LoanDetail = () => {
     const [paymentForm, setPaymentForm] = useState({
         amount: "",
         method: "Efectivo",
-        notes: ""
+        notes: "",
+        installmentNumber: ""
     });
 
     useEffect(() => {
@@ -109,7 +116,26 @@ const LoanDetail = () => {
                 .single();
 
             if (error) throw error;
-            setLoan(data as any);
+            const loanData = data as any;
+            setLoan(loanData);
+
+            // Generate schedule for display
+            const generatedSchedule = generateSchedule(
+                loanData.start_date,
+                loanData.frequency as Frequency,
+                loanData.installments,
+                loanData.installment_amount,
+                loanData.paid_installments
+            );
+            setSchedule(generatedSchedule);
+
+            // Set suggested payment amount
+            setPaymentForm(prev => ({
+                ...prev,
+                amount: loanData.installment_amount.toString(),
+                installmentNumber: (loanData.paid_installments + 1).toString()
+            }));
+
         } catch (error) {
             console.error("Error loading loan:", error);
             toast.error("No se pudo cargar el préstamo");
@@ -154,17 +180,20 @@ const LoanDetail = () => {
                 user_id: user.id,
                 amount: amount,
                 payment_date: new Date().toISOString(),
-                payment_number: (loan.paid_installments || 0) + 1,
+                payment_number: parseInt(paymentForm.installmentNumber) || (loan.paid_installments || 0) + 1,
                 payment_method: paymentForm.method,
                 notes: paymentForm.notes,
-                due_date: new Date().toISOString() // Fallback
+                due_date: new Date().toISOString()
             });
 
             if (paymentError) throw paymentError;
 
             // 2. Update Loan Status
             const newPaidAmount = (loan.paid_amount || 0) + amount;
-            const newRemainingAmount = loan.total_amount - newPaidAmount;
+            const newRemainingAmount = Math.max(0, loan.total_amount - newPaidAmount);
+
+            // If they paid exactly the installment amount or more, we count it as a paid installment
+            // For simplicity, we increment paid_installments
             const newPaidInstallments = (loan.paid_installments || 0) + 1;
             const newStatus = newRemainingAmount <= 0 ? "completed" : "active";
 
@@ -172,7 +201,7 @@ const LoanDetail = () => {
                 .from("loans")
                 .update({
                     paid_amount: newPaidAmount,
-                    remaining_amount: Math.max(0, newRemainingAmount),
+                    remaining_amount: newRemainingAmount,
                     paid_installments: newPaidInstallments,
                     status: newStatus,
                     updated_at: new Date().toISOString()
@@ -183,7 +212,7 @@ const LoanDetail = () => {
 
             toast.success("¡Pago registrado exitosamente!");
             setShowPaymentDialog(false);
-            setPaymentForm({ amount: "", method: "Efectivo", notes: "" });
+            setPaymentForm({ amount: loan.installment_amount.toString(), method: "Efectivo", notes: "", installmentNumber: (newPaidInstallments + 1).toString() });
             loadLoanData();
             loadPayments();
         } catch (error: any) {
@@ -192,15 +221,6 @@ const LoanDetail = () => {
         } finally {
             setIsSavingPayment(false);
         }
-    };
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("es-CO", {
-            style: "currency",
-            currency: "COP",
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(amount);
     };
 
     const getStatusBadge = (status: string) => {
@@ -228,14 +248,13 @@ const LoanDetail = () => {
                         body { font-family: 'Courier New', Courier, monospace; width: 300px; padding: 20px; border: 1px dashed #000; }
                         .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
                         .item { display: flex; justify-content: space-between; margin: 5px 0; }
-                        .footer { text-align: center; margin-top: 20px; font-size: 12px; }
                         .amount { font-size: 20px; font-weight: bold; text-align: center; margin: 15px 0; }
+                        .footer { text-align: center; margin-top: 20px; font-size: 12px; }
                     </style>
                 </head>
                 <body>
                     <div class="header">
                         <strong>RAPICRÉDITOS SAAS</strong><br>
-                        NIT: 900.XXX.XXX-1<br>
                         RECIBO DE CAJA
                     </div>
                     <div class="item"><span>Fecha:</span> <span>${new Date(payment.payment_date).toLocaleString()}</span></div>
@@ -244,13 +263,8 @@ const LoanDetail = () => {
                     <div class="item"><span>Método:</span> <span>${payment.payment_method}</span></div>
                     <div class="amount">${formatCurrency(payment.amount)}</div>
                     <div class="item"><span>Concepto:</span> <span>Abono #${payment.payment_number}</span></div>
-                    <div class="footer">
-                        SOPORTE DE PAGO EXITOSO<br>
-                        Gracias por su cumplimiento.
-                    </div>
-                    <script>
-                        window.onload = function() { window.print(); window.close(); }
-                    </script>
+                    <div class="footer">¡SOPORTE DE PAGO EXITOSO!</div>
+                    <script>window.onload = () => { window.print(); window.close(); }</script>
                 </body>
             </html>
         `);
@@ -259,23 +273,17 @@ const LoanDetail = () => {
 
     const handleDownloadPazYSalvo = () => {
         if (!loan) return;
-
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
-
         const date = new Date().toLocaleDateString();
-
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Certificado de Paz y Salvo - ${loan.loan_number}</title>
+                    <title>Paz y Salvo - ${loan.loan_number}</title>
                     <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 40px; color: #333; }
-                        .header { text-align: center; margin-bottom: 50px; }
-                        .content { margin-bottom: 50px; }
-                        .footer { margin-top: 100px; text-align: center; }
-                        .signature { border-top: 1px solid #000; width: 250px; margin: 0 auto; padding-top: 10px; }
-                        .stamp { color: #059669; font-weight: bold; border: 3px solid #059669; display: inline-block; padding: 10px; transform: rotate(-5deg); margin-top: 20px; text-transform: uppercase; }
+                        body { font-family: sans-serif; padding: 40px; line-height: 1.6; }
+                        .header { text-align: center; margin-bottom: 40px; }
+                        .stamp { border: 4px solid #059669; color: #059669; display: inline-block; padding: 10px 20px; font-weight: bold; transform: rotate(-5deg); margin-top: 20px; }
                     </style>
                 </head>
                 <body>
@@ -283,39 +291,23 @@ const LoanDetail = () => {
                         <h1>CERTIFICADO DE PAZ Y SALVO</h1>
                         <p>Orden # ${loan.loan_number}</p>
                     </div>
-                    <div class="content">
-                        <p>A quien pueda interesar,</p>
-                        <p>Por medio de la presente se certifica que el cliente <strong>${loan.clients?.full_name}</strong>, identificado(a) con la documentación registrada en nuestro sistema, se encuentra a la fecha en <strong>PAZ Y SALVO</strong> por concepto de las obligaciones técnicas y financieras contraídas mediante el contrato de préstamo número <strong>${loan.loan_number}</strong>.</p>
-                        <p>El préstamo por un valor total de ${formatCurrency(loan.total_amount)} fue pagado en su totalidad satisfactoriamente.</p>
-                        <p>Se expide en la ciudad correspondiente, a los ${date}.</p>
-                        <div style="text-align: center;">
-                            <div class="stamp">TOTALMENTE PAGADO</div>
-                        </div>
-                    </div>
-                    <div class="footer">
-                        <div class="signature">Firma Autorizada</div>
-                        <p>RapiCréditos SaaS System</p>
-                    </div>
-                    <script>
-                        window.onload = function() { window.print(); window.close(); }
-                    </script>
+                    <p>Se certifica que <strong>${loan.clients?.full_name}</strong> ha cancelado la totalidad de sus obligaciones vinculadas al préstamo <strong>${loan.loan_number}</strong>.</p>
+                    <p>Monto Pagado: ${formatCurrency(loan.total_amount)}</p>
+                    <p>Fecha de Expedición: ${date}</p>
+                    <div style="text-align:center"><div class="stamp">TOTALMENTE PAGADO</div></div>
+                    <script>window.onload = () => { window.print(); window.close(); }</script>
                 </body>
             </html>
         `);
         printWindow.document.close();
     };
 
-    if (isLoading) {
-        return <DashboardLayout><div className="flex items-center justify-center h-96"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div></DashboardLayout>;
-    }
-
-    if (!loan) {
-        return <DashboardLayout><div className="text-center py-20">No se encontró el préstamo.</div></DashboardLayout>;
-    }
+    if (isLoading) return <DashboardLayout><div className="flex items-center justify-center min-h-[400px]"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div></DashboardLayout>;
+    if (!loan) return <DashboardLayout><div className="text-center py-20">No se encontró el préstamo.</div></DashboardLayout>;
 
     return (
         <DashboardLayout>
-            <div className="space-y-8">
+            <div className="space-y-8 pb-12">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -324,73 +316,52 @@ const LoanDetail = () => {
                         </Button>
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Detalle del Préstamo</h1>
-                            <p className="text-muted-foreground">{loan.loan_number} - {loan.clients?.full_name}</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">{loan.loan_number}</span>
+                                <Badge variant="outline" className="bg-primary/5">{loan.clients?.full_name}</Badge>
+                            </div>
                         </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         {loan.status === 'completed' && (
-                            <Button
-                                variant="outline"
-                                onClick={handleDownloadPazYSalvo}
-                                className="border-primary text-primary hover:bg-primary/5"
-                            >
+                            <Button variant="outline" onClick={handleDownloadPazYSalvo} className="border-success text-success hover:bg-success/5">
                                 <CheckCircle className="mr-2 w-5 h-5" />
                                 Descargar Paz y Salvo
                             </Button>
                         )}
+                        <Button
+                            variant="outline"
+                            onClick={() => navigate(`/loans/${loan.id}/edit`)}
+                            className="flex"
+                        >
+                            <Calendar className="mr-2 w-4 h-4" />
+                            Ajustar Plan
+                        </Button>
                         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
                             <DialogTrigger asChild>
-                                <Button
-                                    className="bg-gradient-primary hover:opacity-90 shadow-glow"
-                                    disabled={loan.status === 'completed'}
-                                >
+                                <Button className="bg-gradient-primary hover:opacity-90 shadow-glow" disabled={loan.status === 'completed'}>
                                     <Plus className="mr-2 w-5 h-5" />
                                     {loan.status === 'completed' ? 'Préstamo Pagado' : 'Registrar Abono'}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Registrar Pago</DialogTitle>
-                                    <DialogDescription>
-                                        Ingresa el monto recibido para este préstamo.
-                                    </DialogDescription>
-                                </DialogHeader>
+                                <DialogHeader><DialogTitle>Registrar Pago</DialogTitle><DialogDescription>Ingresa el monto para el abono #{paymentForm.installmentNumber}.</DialogDescription></DialogHeader>
                                 <form onSubmit={handleRegisterPayment} className="space-y-4 py-4">
                                     <div className="space-y-2">
                                         <Label>Monto del Abono</Label>
                                         <div className="relative">
                                             <DollarSign className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                                            <Input
-                                                required
-                                                type="number"
-                                                className="pl-10"
-                                                placeholder="Ej: 50000"
-                                                value={paymentForm.amount}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                                            />
+                                            <Input required type="number" className="pl-10" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Método de Pago</Label>
-                                        <Input
-                                            value={paymentForm.method}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-                                            placeholder="Efectivo, Nequi..."
-                                        />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2"><Label># Cuota</Label><Input type="number" value={paymentForm.installmentNumber} onChange={(e) => setPaymentForm({ ...paymentForm, installmentNumber: e.target.value })} /></div>
+                                        <div className="space-y-2"><Label>Método</Label><Input value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })} /></div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Notas</Label>
-                                        <Textarea
-                                            value={paymentForm.notes}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                                            placeholder="Recibido por..."
-                                        />
-                                    </div>
+                                    <div className="space-y-2"><Label>Notas</Label><Textarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Ej: Pago por Nequi..." /></div>
                                     <DialogFooter>
                                         <Button type="button" variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancelar</Button>
-                                        <Button type="submit" disabled={isSavingPayment}>
-                                            {isSavingPayment ? "Guardando..." : "Confirmar Pago"}
-                                        </Button>
+                                        <Button type="submit" disabled={isSavingPayment}>{isSavingPayment ? "Guardando..." : "Confirmar Pago"}</Button>
                                     </DialogFooter>
                                 </form>
                             </DialogContent>
@@ -399,67 +370,109 @@ const LoanDetail = () => {
                 </div>
 
                 <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Resumen Financiero */}
-                    <div className="lg:col-span-2 space-y-6">
+                    {/* Resumen Financiero y Plan de Pagos */}
+                    <div className="lg:col-span-2 space-y-8">
                         <div className="grid sm:grid-cols-3 gap-4">
-                            <Card className="bg-primary/5 border-primary/20">
+                            <Card className="bg-primary/5 border-primary/10">
                                 <CardContent className="pt-6">
-                                    <p className="text-sm text-muted-foreground mb-1">Total a Pagar</p>
-                                    <p className="text-xl font-bold">{formatCurrency(loan.total_amount)}</p>
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Monto Total</p>
+                                    <p className="text-2xl font-bold">{formatCurrency(loan.total_amount)}</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-success/5 border-success/20">
+                            <Card className="bg-success/5 border-success/10">
                                 <CardContent className="pt-6">
-                                    <p className="text-sm text-muted-foreground mb-1">Total Pagado</p>
-                                    <p className="text-xl font-bold text-success">{formatCurrency(loan.paid_amount || 0)}</p>
+                                    <p className="text-xs font-medium text-success uppercase tracking-wider mb-1">Total Pagado</p>
+                                    <p className="text-2xl font-bold text-success">{formatCurrency(loan.paid_amount || 0)}</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-destructive/5 border-destructive/20">
+                            <Card className="bg-destructive/5 border-destructive/10">
                                 <CardContent className="pt-6">
-                                    <p className="text-sm text-muted-foreground mb-1">Saldo Pendiente</p>
-                                    <p className="text-xl font-bold text-destructive">{formatCurrency(loan.remaining_amount)}</p>
+                                    <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-1">Saldo Pendiente</p>
+                                    <p className="text-2xl font-bold text-destructive">{formatCurrency(loan.remaining_amount)}</p>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        {/* Tabla de Pagos */}
+                        {/* Plan de Pagos Sugerido (Amortización) */}
                         <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg flex items-center justify-between">
-                                    <span>Historial de Pagos</span>
-                                    <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                                </CardTitle>
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg">Plan de Pagos</CardTitle>
+                                    <CardDescription>Cronograma de cuotas programadas</CardDescription>
+                                </div>
+                                <Calendar className="w-5 h-5 text-muted-foreground" />
                             </CardHeader>
+                            <CardContent>
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-[80px]">#</TableHead>
+                                                <TableHead>Fecha Programada</TableHead>
+                                                <TableHead>Monto</TableHead>
+                                                <TableHead>Estado</TableHead>
+                                                <TableHead className="text-right">Acción</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {schedule.map((inst) => (
+                                                <TableRow key={inst.number} className={inst.isPaid ? "opacity-60 bg-secondary/20" : ""}>
+                                                    <TableCell className="font-medium">Cuota {inst.number}</TableCell>
+                                                    <TableCell>{new Date(inst.date).toLocaleDateString()}</TableCell>
+                                                    <TableCell className="font-semibold">{formatCurrency(inst.amount)}</TableCell>
+                                                    <TableCell>
+                                                        {inst.isPaid ? (
+                                                            <Badge variant="outline" className="bg-success/10 text-success border-success/20">Pagada</Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">Pendiente</Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {!inst.isPaid && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="text-primary hover:text-primary hover:bg-primary/10 h-8"
+                                                                onClick={() => {
+                                                                    setPaymentForm(prev => ({
+                                                                        ...prev,
+                                                                        amount: inst.amount.toString(),
+                                                                        installmentNumber: inst.number.toString()
+                                                                    }));
+                                                                    setShowPaymentDialog(true);
+                                                                }}
+                                                            >
+                                                                Pagar
+                                                            </Button>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Historial de Pagos Reales */}
+                        <Card>
+                            <CardHeader><CardTitle className="text-lg">Historial de Transacciones</CardTitle></CardHeader>
                             <CardContent>
                                 {payments.length === 0 ? (
                                     <div className="text-center py-10 text-muted-foreground">No hay pagos registrados aún.</div>
                                 ) : (
                                     <Table>
                                         <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Fecha</TableHead>
-                                                <TableHead>Monto</TableHead>
-                                                <TableHead>Método</TableHead>
-                                                <TableHead>Número</TableHead>
-                                                <TableHead className="text-right">Acciones</TableHead>
-                                            </TableRow>
+                                            <TableRow><TableHead>Fecha</TableHead><TableHead>Monto</TableHead><TableHead>Método</TableHead><TableHead>Info</TableHead><TableHead className="text-right">Recibo</TableHead></TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {payments.map((p) => (
                                                 <TableRow key={p.id}>
                                                     <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
-                                                    <TableCell className="font-bold">{formatCurrency(p.amount)}</TableCell>
+                                                    <TableCell className="font-bold text-success">{formatCurrency(p.amount)}</TableCell>
                                                     <TableCell>{p.payment_method}</TableCell>
                                                     <TableCell>Abono #{p.payment_number}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleDownloadReceipt(p)}
-                                                        >
-                                                            <Download className="w-4 h-4" />
-                                                        </Button>
-                                                    </TableCell>
+                                                    <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(p)}><Download className="w-4 h-4" /></Button></TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -469,58 +482,36 @@ const LoanDetail = () => {
                         </Card>
                     </div>
 
-                    {/* Información del Préstamo */}
+                    {/* Información Lateral */}
                     <div className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg">Detalles Técnicos</CardTitle>
-                            </CardHeader>
+                        <Card className="border-primary/20 bg-gradient-to-br from-card to-secondary/20">
+                            <CardHeader><CardTitle className="text-lg">Detalles Técnicos</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Estado:</span>
-                                    {getStatusBadge(loan.status)}
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Tasa de Interés:</span>
-                                    <span className="font-medium">{loan.interest_rate}% mensual</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Frecuencia:</span>
-                                    <span className="font-medium">{loan.frequency}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Cuotas:</span>
-                                    <span className="font-medium">{loan.paid_installments} / {loan.installments}</span>
-                                </div>
-                                <Separator />
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Fecha Inicio:</span>
-                                    <span className="font-medium">{new Date(loan.start_date).toLocaleDateString()}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Vencimiento:</span>
-                                    <span className="font-medium">{new Date(loan.end_date).toLocaleDateString()}</span>
-                                </div>
+                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Estado:</span>{getStatusBadge(loan.status)}</div>
+                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tasa:</span><span className="font-medium">{loan.interest_rate}% {loan.interest_type || 'simple'}</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Frecuencia:</span><span className="font-medium capitalize">{loan.frequency}</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Progreso:</span><span className="font-medium">{loan.paid_installments} / {loan.installments} cuotas</span></div>
+                                <Separator className="bg-primary/10" />
+                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Fecha Inicio:</span><span className="font-medium">{new Date(loan.start_date).toLocaleDateString()}</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Vencimiento:</span><span className="font-medium">{new Date(loan.end_date).toLocaleDateString()}</span></div>
                             </CardContent>
                         </Card>
 
                         <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    <User className="w-4 h-4 text-primary" />
-                                    Cliente
-                                </CardTitle>
-                            </CardHeader>
+                            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><User className="w-4 h-4 text-primary" />Cliente</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
-                                <p className="font-bold text-lg">{loan.clients?.full_name}</p>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Phone className="w-4 h-4" />
-                                    {loan.clients?.phone}
+                                <div><p className="font-bold text-lg leading-tight">{loan.clients?.full_name}</p><p className="text-sm text-muted-foreground">{loan.clients?.email}</p></div>
+                                <div className="flex items-center gap-2 text-sm font-medium"><Phone className="w-4 h-4 text-success" />{loan.clients?.phone}</div>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" className="flex-1" onClick={() => navigate(`/clients/${loan.clients?.id}`)}>Ver Perfil</Button>
+                                    <Button variant="outline" size="icon" onClick={() => window.open(`https://wa.me/${loan.clients?.phone.replace(/\D/g, '')}`, '_blank')}><Phone className="w-4 h-4" /></Button>
                                 </div>
-                                <Button variant="outline" className="w-full" onClick={() => navigate(`/clients/${loan.clients?.id}`)}>
-                                    Ver Perfil del Cliente
-                                </Button>
                             </CardContent>
+                        </Card>
+
+                        <Card className="bg-accent/5 border-accent/20">
+                            <CardHeader><CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Notas Internas</CardTitle></CardHeader>
+                            <CardContent><p className="text-sm italic">{loan.notes || "Sin notas registradas para este préstamo."}</p></CardContent>
                         </Card>
                     </div>
                 </div>

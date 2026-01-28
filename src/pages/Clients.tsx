@@ -25,20 +25,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface Client {
-  id: string;
-  full_name: string;
-  document_number: string;
-  phone: string;
-  email: string;
-  city: string;
-  status: string;
-  created_at: string;
+  //... existing ...
 }
 
 const Clients = () => {
+  const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -46,16 +41,14 @@ const Clients = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadClients();
-  }, []);
+    if (user) {
+      loadClients();
+    }
+  }, [user]);
 
   const loadClients = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/login");
-        return;
-      }
+      if (!user) return;
 
       const { data, error } = await supabase
         .from("clients")
@@ -76,15 +69,40 @@ const Clients = () => {
     }
   };
 
+  const downloadTemplate = () => {
+    const separator = ";";
+    const headers = ["Nombre", "Documento", "Telefono", "Email", "Ciudad", "Estado"];
+    const sampleRows = [
+      ["Juan Perez", "12345678", "3001234567", "juan@ejemplo.com", "Medellin", "active"],
+      ["Maria Lopez", "87654321", "3109876543", "maria@ejemplo.com", "Bogota", "active"]
+    ];
+
+    const csvContent = [headers, ...sampleRows]
+      .map(row => row.map(cell => `"${cell}"`).join(separator))
+      .join("\n");
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "plantilla_clientes.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleExport = () => {
     if (clients.length === 0) {
       toast({ title: "Sin datos", description: "No hay clientes para exportar", variant: "destructive" });
       return;
     }
 
-    const headers = ["ID", "Nombre", "Documento", "Teléfono", "Email", "Ciudad", "Estado"];
+    // Usar punto y coma como separador por defecto para Excel en español
+    const separator = ";";
+    const headers = ["Nombre", "Documento", "Telefono", "Email", "Ciudad", "Estado"];
+
     const rows = clients.map(c => [
-      c.id,
       c.full_name,
       c.document_number || "",
       c.phone || "",
@@ -93,16 +111,21 @@ const Clients = () => {
       c.status
     ]);
 
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${(cell || "").toString().replace(/"/g, '""')}"`).join(separator))
+      .join("\n");
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `clientes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `clientes_rapicredi_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    toast({ title: "Exportación lista", description: "El archivo se ha descargado correctamente." });
   };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,39 +136,57 @@ const Clients = () => {
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
-        const lines = text.split("\n");
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const lines = text.split(/\r?\n/);
 
-        // Skip header and filter empty lines
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast({ title: "Sesión expirada", description: "Por favor vuelve a iniciar sesión.", variant: "destructive" });
+          return;
+        }
+
+        if (lines.length < 2) {
+          toast({ title: "Archivo vacío", description: "El archivo no contiene datos válidos.", variant: "destructive" });
+          return;
+        }
+
+        // Detectar separador (coma o punto y coma)
+        const firstLine = lines[0];
+        const separator = firstLine.includes(";") ? ";" : ",";
+
         const clientsToImport = lines.slice(1)
           .filter(line => line.trim() !== "")
-          .map(line => {
-            const values = line.split(",").map(v => v.trim());
+          .map((line, idx) => {
+            const values = line.split(separator).map(v => v.trim().replace(/^"|"$/g, ''));
+
+            if (!values[0]) return null;
+
             return {
               user_id: user.id,
-              full_name: values[1],
-              document_number: values[2],
-              phone: values[3],
-              email: values[4],
-              city: values[5],
-              status: values[6] || "active"
+              full_name: values[0],
+              document_number: values[1] || "",
+              phone: values[2] || "",
+              email: values[3] || "",
+              city: values[4] || "",
+              status: values[5] || "active"
             };
-          });
+          })
+          .filter(Boolean);
 
         if (clientsToImport.length > 0) {
           const { error } = await supabase.from("clients").insert(clientsToImport);
           if (error) throw error;
 
-          toast({ title: "Éxito", description: `${clientsToImport.length} clientes importados correctamente` });
+          toast({ title: "Importación completa", description: `Se han registrado ${clientsToImport.length} clientes.` });
           loadClients();
+        } else {
+          toast({ title: "Sin datos válidos", description: "No se encontraron clientes para importar.", variant: "destructive" });
         }
       } catch (error: any) {
-        toast({ title: "Error", description: "No se pudo importar el archivo. Verifica el formato.", variant: "destructive" });
+        console.error("Error importando:", error);
+        toast({ title: "Error de formato", description: "Verifica que el archivo sea un CSV válido.", variant: "destructive" });
       }
     };
     reader.readAsText(file);
-    // Reset input
     event.target.value = "";
   };
 
@@ -187,9 +228,19 @@ const Clients = () => {
               variant="outline"
               onClick={() => handleExport()}
               className="border-primary/20 hover:bg-primary/5"
+              title="Descargar lista actual"
             >
               <Download className="mr-2 w-4 h-4" />
               Exportar
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => downloadTemplate()}
+              className="text-muted-foreground hover:text-primary"
+              title="Descargar plantilla para importar"
+            >
+              <FileSpreadsheet className="mr-2 w-4 h-4" />
+              Plantilla
             </Button>
             <div className="relative">
               <input

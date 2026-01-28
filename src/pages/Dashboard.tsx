@@ -15,7 +15,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/auth/AuthContext";
 import { toast } from "sonner";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 
 interface Stats {
   totalCapital: number;
@@ -27,6 +37,7 @@ interface Stats {
 }
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<Stats>({
     totalCapital: 0,
     totalClients: 0,
@@ -40,16 +51,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
 
   const loadDashboardData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/login");
-        return;
-      }
+      if (!user) return;
 
       // Load stats
       const [clientsRes, loansRes] = await Promise.all([
@@ -188,67 +197,65 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Recent Activity */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Recent Loans */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Préstamos Recientes</CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/loans")}>
-                Ver todos
-              </Button>
+        {/* Main Content Grid */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Chart Section */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg">Rendimiento de Cartera</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : recentLoans.length === 0 ? (
-                <div className="text-center py-8">
-                  <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No hay préstamos registrados</p>
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => navigate("/loans/new")}
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={[
+                      { name: 'Ene', monto: 4000 },
+                      { name: 'Feb', monto: 3000 },
+                      { name: 'Mar', monto: 2000 },
+                      { name: 'Abr', monto: 2780 },
+                      { name: 'May', monto: 1890 },
+                      { name: 'Jun', monto: 2390 },
+                      { name: 'Jul', monto: stats.totalCapital / 1000 },
+                    ]}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
-                    Crear primer préstamo
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {recentLoans.map((loan, index) => (
-                    <motion.div
-                      key={loan.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
-                      onClick={() => navigate(`/loans/${loan.id}`)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Users className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">{loan.clients?.full_name}</p>
-                          <p className="text-sm text-muted-foreground">{loan.loan_number}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-foreground">{formatCurrency(loan.total_amount)}</p>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${loan.status === "active" ? "bg-success/20 text-success" :
-                          loan.status === "completed" ? "bg-primary/20 text-primary" :
-                            "bg-destructive/20 text-destructive"
-                          }`}>
-                          {loan.status === "active" ? "Activo" :
-                            loan.status === "completed" ? "Pagado" : "En mora"}
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+                    <defs>
+                      <linearGradient id="colorMonto" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground))" opacity={0.1} />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                      tickFormatter={(value) => `$${value}k`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        borderColor: 'hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="monto"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorMonto)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
@@ -314,6 +321,71 @@ const Dashboard = () => {
                   <p className="text-xs text-muted-foreground">Calcular cuotas y fechas</p>
                 </div>
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="grid lg:grid-cols-1 gap-6">
+          {/* Recent Loans */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Préstamos Recientes</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/loans")}>
+                Ver todos
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : recentLoans.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No hay préstamos registrados</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => navigate("/loans/new")}
+                  >
+                    Crear primer préstamo
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {recentLoans.map((loan, index) => (
+                    <motion.div
+                      key={loan.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 transition-all cursor-pointer group"
+                      onClick={() => navigate(`/loans/${loan.id}`)}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <Users className="w-5 h-5" />
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${loan.status === "active" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                          {loan.status}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground group-hover:text-primary transition-colors">{loan.clients?.full_name}</p>
+                        <p className="text-xs text-muted-foreground mb-3">{loan.loan_number}</p>
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Monto</p>
+                            <p className="font-bold text-lg">{formatCurrency(loan.total_amount)}</p>
+                          </div>
+                          <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
