@@ -1,26 +1,31 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Bot, User } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { getQuickResponse, BotVisualResponse } from "@/lib/botVisuals";
+import { useNavigate } from "react-router-dom";
 
 interface Message {
     id: string;
     text: string;
     sender: "user" | "bot";
     timestamp: Date;
+    visual?: BotVisualResponse;
 }
 
 const SupportChat = () => {
+    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         {
             id: "1",
-            text: "¡Hola! Soy RapiBot 🤖. ¿En qué te puedo ayudar hoy? Pregúntame sobre préstamos, clientes o pagos.",
+            text: "¡Hola! Soy RapiBot 🤖. ¿En qué te puedo ayudar hoy?",
             sender: "bot",
-            timestamp: new Date()
+            timestamp: new Date(),
+            visual: getQuickResponse("prestamo") || undefined
         }
     ]);
     const [inputValue, setInputValue] = useState("");
@@ -36,39 +41,56 @@ const SupportChat = () => {
 
     const handleSendMessage = async (e?: React.FormEvent) => {
         e?.preventDefault();
-        if (!inputValue.trim()) return;
+        const text = inputValue.trim();
+        if (!text) return;
 
         const userMsg: Message = {
             id: Date.now().toString(),
-            text: inputValue,
+            text,
             sender: "user",
             timestamp: new Date()
         };
 
         setMessages(prev => [...prev, userMsg]);
         setInputValue("");
-        setIsTyping(true);
 
+        // 1. REVISAR RESPUESTA INSTANTÁNEA (MÁS RÁPIDO)
+        const quickRes = getQuickResponse(text);
+        if (quickRes) {
+            setTimeout(() => {
+                setMessages(prev => [...prev, {
+                    id: (Date.now() + 1).toString(),
+                    text: quickRes.text,
+                    sender: "bot",
+                    timestamp: new Date(),
+                    visual: quickRes
+                }]);
+            }, 500);
+            return;
+        }
+
+        // 2. SI NO ES COMÚN, LLAMAR A LA IA
+        setIsTyping(true);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000); // Darle 1 minuto completo
 
         try {
             const url = "https://ollama-ollama.ginee6.easypanel.host/api/generate";
-            console.log(`RapiBot: Enviando petición a ${url}...`);
+            // console.log(`RapiBot: Enviando petición a ${url}...`);
 
-            const CONTEXT = "Eres RapiBot, el asistente de RapiCréditos. Responde de forma breve y profesional.";
+            const CONTEXT = "Eres RapiBot, el asistente de RapiCréditos. Responde breve y profesional.";
 
             const response = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     model: "llama3.2:1b",
-                    prompt: `${CONTEXT}\n\nPregunta: ${userMsg.text}\nRespuesta:`,
+                    prompt: `${CONTEXT}\n\nPregunta: ${text}\nRespuesta:`,
                     stream: false,
                     options: {
                         temperature: 0.3,
                         num_thread: 4,
-                        num_predict: 200
+                        num_predict: 100
                     }
                 }),
                 signal: controller.signal
@@ -89,21 +111,15 @@ const SupportChat = () => {
 
         } catch (error: any) {
             clearTimeout(timeoutId);
-            console.error("RapiBot Detalle Error:", error);
+            // console.error("RapiBot Detalle Error:", error);
 
-            let errorMessage = "Lo siento, tuve un problema al conectar con mi cerebro (Ollama).";
-
-            if (error.name === 'AbortError') {
-                errorMessage = "⌛ Mi cerebro está tardando mucho en responder (más de 60s). Por favor, revisa si Ollama está muy cargado.";
-            } else if (error instanceof TypeError) {
-                errorMessage = "⚠️ Error de red/CORS. Asegúrate de configurar OLLAMA_ORIGINS=\"*\" en tu servidor de Easypanel para que pueda responderte.";
-            }
-
-            const fallback = generateResponse(inputValue || userMsg.text);
+            const fallback = generateResponse(text);
 
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
-                text: `${errorMessage}\n\nRespuesta de respaldo local: ${fallback}`,
+                text: error.name === 'AbortError'
+                    ? `Estoy procesando muchas solicitudes. Aquí tienes ayuda rápida: ${fallback}`
+                    : fallback,
                 sender: "bot",
                 timestamp: new Date()
             }]);
@@ -115,26 +131,13 @@ const SupportChat = () => {
     const generateResponse = (query: string): string => {
         const q = query.toLowerCase();
 
-        if (q.includes("crear") && (q.includes("prestamo") || q.includes("préstamo"))) {
-            return "Para crear un préstamo, ve al menú 'Préstamos' y haz clic en 'Nuevo Préstamo'. Necesitarás seleccionar un cliente primero.";
+        if (q.includes("crear")) {
+            return "Para crear algo nuevo, usa los botones '+' en la parte superior de cada sección.";
         }
-        if (q.includes("cliente") || q.includes("nuevo")) {
-            return "Puedes registrar clientes en la sección 'Clientes' > 'Nuevo Cliente'. También puedes importarlos masivamente desde un Excel.";
+        if (q.includes("pago") || q.includes("abono")) {
+            return "Puedes registrar abonos entrando al detalle del préstamo del cliente.";
         }
-        if (q.includes("pago") || q.includes("pagar") || q.includes("abono")) {
-            return "Para registrar un pago, ve al detalle del préstamo y usa el botón 'Registrar Abono' o 'Pagar' en la tabla de cuotas.";
-        }
-        if (q.includes("interes") || q.includes("tasa")) {
-            return "Manejamos interés simple (fijo) y compuesto (sobre saldo). Puedes elegir el tipo al crear el préstamo.";
-        }
-        if (q.includes("contraseña") || q.includes("clave")) {
-            return "Si olvidaste tu clave, usa la opción 'Recuperar contraseña' en el login. Te llegará un correo para restablecerla.";
-        }
-        if (q.includes("exportar") || q.includes("excel")) {
-            return "Sí, puedes exportar tus datos de clientes y préstamos a Excel/CSV desde los botones en la parte superior de cada lista.";
-        }
-
-        return "Mmm, no estoy seguro de eso. ¿Podrías intentar preguntar de otra forma? También puedes consultar la sección de Ayuda en el menú.";
+        return "Mmm, ¿podrías darme más detalles? También puedes ir al Centro de Ayuda en el menú lateral.";
     };
 
     return (
