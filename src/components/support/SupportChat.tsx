@@ -48,17 +48,51 @@ const SupportChat = () => {
         setInputValue("");
         setIsTyping(true);
 
-        // Simular respuesta de IA
-        setTimeout(() => {
-            const botResponse = generateResponse(userMsg.text);
+        try {
+            // Base de conocimiento integrada para contexto inmediato
+            const CONTEXT = `ERES RAPIBOT, ASISTENTE DE RAPICRÉDITOS.
+INFORMACIÓN CLAVE:
+1. CLIENTES: Crear, editar, importar masivamente (CSV) y exportar.
+2. PRÉSTAMOS: Crear con interés simple/compuesto. Ver tabla de amortización y botón "Ajustar Plan" para editar.
+3. PAGOS: Botón "Registrar Abono" en detalle o "Pagar" en tabla. Genera recibos. "Paz y Salvo" al terminar.
+4. SOPORTE: Centro de Ayuda en menú. Recuperación de clave por correo.
+RESPONDE CORTO Y AMABLE.`;
+
+            // Llamada a Ollama
+            const response = await fetch("https://ollama-rapiredissas.ginee6.easypanel.host/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: "llama3.2:1b",
+                    prompt: `${CONTEXT}\n\nUsuario: ${userMsg.text}\nRapiBot:`,
+                    stream: false,
+                    options: { temperature: 0.3 }
+                })
+            });
+
+            if (!response.ok) throw new Error("API Error");
+            const data = await response.json();
+
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
-                text: botResponse,
+                text: data.response,
                 sender: "bot",
                 timestamp: new Date()
             }]);
+
+        } catch (error) {
+            console.error("AI Error:", error);
+            // Fallback local si falla la API
+            const fallbackResponse = generateResponse(userMsg.text);
+            setMessages(prev => [...prev, {
+                id: (Date.now() + 1).toString(),
+                text: fallbackResponse + " (Nota: Estoy funcionando en modo sin conexión)",
+                sender: "bot",
+                timestamp: new Date()
+            }]);
+        } finally {
             setIsTyping(false);
-        }, 1500);
+        }
     };
 
     const generateResponse = (query: string): string => {
@@ -141,8 +175,8 @@ const SupportChat = () => {
                                     >
                                         <div
                                             className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.sender === "user"
-                                                    ? "bg-primary text-primary-foreground rounded-br-none"
-                                                    : "bg-background border border-border shadow-sm rounded-bl-none"
+                                                ? "bg-primary text-primary-foreground rounded-br-none"
+                                                : "bg-background border border-border shadow-sm rounded-bl-none"
                                                 }`}
                                         >
                                             <p>{msg.text}</p>
