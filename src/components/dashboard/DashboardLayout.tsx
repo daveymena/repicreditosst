@@ -13,11 +13,13 @@ import {
   X,
   ChevronRight,
   MessageSquare,
-  CreditCard
+  CreditCard,
+  HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import SupportChat from "@/components/support/SupportChat";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -90,6 +92,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: MessageSquare, label: "WhatsApp", path: "/whatsapp" },
     { icon: CreditCard, label: "Planes y Precios", path: "/pricing" },
     { icon: User, label: "Perfil", path: "/profile" },
+    { icon: HelpCircle, label: "Ayuda", path: "/help" },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -266,6 +269,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
         </div>
       </main>
+      <SupportChat />
     </div>
   );
 };

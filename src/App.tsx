@@ -25,6 +25,7 @@ import ClientOnboarding from "@/pages/ClientOnboarding";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsAndConditions from "@/pages/TermsAndConditions";
 import NotFound from "@/pages/NotFound";
+import Help from "@/pages/Help";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,7 @@ const App = () => {
                 <Route path="/simulator" element={<Simulator />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/whatsapp" element={<WhatsApp />} />
+                <Route path="/help" element={<Help />} />
               </Route>
 
               {/* Catch-all */}
