@@ -372,23 +372,38 @@ const LoanDetail = () => {
                 <div className="grid lg:grid-cols-3 gap-8">
                     {/* Resumen Financiero y Plan de Pagos */}
                     <div className="lg:col-span-2 space-y-8">
-                        <div className="grid sm:grid-cols-3 gap-4">
-                            <Card className="bg-primary/5 border-primary/10">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <Card className="bg-primary/5 border-primary/10 relative overflow-hidden">
                                 <CardContent className="pt-6">
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Monto Total</p>
-                                    <p className="text-2xl font-bold">{formatCurrency(loan.total_amount)}</p>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Monto Total</p>
+                                            <p className="text-2xl font-bold">{formatCurrency(loan.total_amount)}</p>
+                                        </div>
+                                        <TrendingUp className="w-8 h-8 text-primary/20 absolute -right-1 -bottom-1" />
+                                    </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-success/5 border-success/10">
+                            <Card className="bg-success/5 border-success/10 relative overflow-hidden">
                                 <CardContent className="pt-6">
-                                    <p className="text-xs font-medium text-success uppercase tracking-wider mb-1">Total Pagado</p>
-                                    <p className="text-2xl font-bold text-success">{formatCurrency(loan.paid_amount || 0)}</p>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-xs font-medium text-success uppercase tracking-wider mb-1">Total Pagado</p>
+                                            <p className="text-2xl font-bold text-success">{formatCurrency(loan.paid_amount || 0)}</p>
+                                        </div>
+                                        <CheckCircle className="w-8 h-8 text-success/20 absolute -right-1 -bottom-1" />
+                                    </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-destructive/5 border-destructive/10">
+                            <Card className="bg-destructive/5 border-destructive/10 relative overflow-hidden">
                                 <CardContent className="pt-6">
-                                    <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-1">Saldo Pendiente</p>
-                                    <p className="text-2xl font-bold text-destructive">{formatCurrency(loan.remaining_amount)}</p>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-1">Saldo Pendiente</p>
+                                            <p className="text-2xl font-bold text-destructive">{formatCurrency(loan.remaining_amount)}</p>
+                                        </div>
+                                        <AlertCircle className="w-8 h-8 text-destructive/20 absolute -right-1 -bottom-1" />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -403,7 +418,7 @@ const LoanDetail = () => {
                                 <Calendar className="w-5 h-5 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="overflow-x-auto">
+                                <div className="hidden md:block overflow-x-auto">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -451,6 +466,33 @@ const LoanDetail = () => {
                                         </TableBody>
                                     </Table>
                                 </div>
+
+                                {/* Vista Móvil: Cuotas */}
+                                <div className="md:hidden space-y-3">
+                                    {schedule.map((inst) => (
+                                        <div key={inst.number} className={`flex items-center justify-between p-3 rounded-lg border ${inst.isPaid ? 'bg-secondary/20' : 'bg-card'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${inst.isPaid ? 'bg-success/20 text-success' : 'bg-primary/10 text-primary'}`}>
+                                                    {inst.number}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm">{formatCurrency(inst.amount)}</p>
+                                                    <p className="text-xs text-muted-foreground">{new Date(inst.date).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {inst.isPaid ? (
+                                                    <CheckCircle className="w-5 h-5 text-success" />
+                                                ) : (
+                                                    <Button size="sm" onClick={() => {
+                                                        setPaymentForm(prev => ({ ...prev, amount: inst.amount.toString(), installmentNumber: inst.number.toString() }));
+                                                        setShowPaymentDialog(true);
+                                                    }}>Pagar</Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -461,24 +503,41 @@ const LoanDetail = () => {
                                 {payments.length === 0 ? (
                                     <div className="text-center py-10 text-muted-foreground">No hay pagos registrados aún.</div>
                                 ) : (
-                                    <div className="overflow-x-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow><TableHead>Fecha</TableHead><TableHead>Monto</TableHead><TableHead>Método</TableHead><TableHead>Info</TableHead><TableHead className="text-right">Recibo</TableHead></TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {payments.map((p) => (
-                                                    <TableRow key={p.id}>
-                                                        <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
-                                                        <TableCell className="font-bold text-success">{formatCurrency(p.amount)}</TableCell>
-                                                        <TableCell>{p.payment_method}</TableCell>
-                                                        <TableCell>Abono #{p.payment_number}</TableCell>
-                                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(p)}><Download className="w-4 h-4" /></Button></TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                    <>
+                                        {/* Desktop Table */}
+                                        <div className="hidden md:block overflow-x-auto">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow><TableHead>Fecha</TableHead><TableHead>Monto</TableHead><TableHead>Método</TableHead><TableHead>Info</TableHead><TableHead className="text-right">Recibo</TableHead></TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {payments.map((p) => (
+                                                        <TableRow key={p.id}>
+                                                            <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
+                                                            <TableCell className="font-bold text-success">{formatCurrency(p.amount)}</TableCell>
+                                                            <TableCell>{p.payment_method}</TableCell>
+                                                            <TableCell>Abono #{p.payment_number}</TableCell>
+                                                            <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(p)}><Download className="w-4 h-4" /></Button></TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                        {/* Mobile Cards */}
+                                        <div className="md:hidden space-y-3">
+                                            {payments.map((p) => (
+                                                <div key={p.id} className="p-3 border rounded-lg bg-card flex justify-between items-center">
+                                                    <div>
+                                                        <p className="font-bold text-success">{formatCurrency(p.amount)}</p>
+                                                        <p className="text-xs text-muted-foreground">{new Date(p.payment_date).toLocaleDateString()} - Abono #{p.payment_number}</p>
+                                                    </div>
+                                                    <Button variant="outline" size="sm" onClick={() => handleDownloadReceipt(p)}>
+                                                        <Download className="w-4 h-4 mr-2" /> Recibo
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
                                 )}
                             </CardContent>
                         </Card>

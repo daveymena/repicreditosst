@@ -58,38 +58,45 @@ INFORMACIÓN CLAVE:
 4. SOPORTE: Centro de Ayuda en menú. Recuperación de clave por correo.
 RESPONDE CORTO Y AMABLE.`;
 
-            // Llamada a Ollama
-            const response = await fetch("https://ollama-rapiredissas.ginee6.easypanel.host/api/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: "llama3.2:1b",
-                    prompt: `${CONTEXT}\n\nUsuario: ${userMsg.text}\nRapiBot:`,
-                    stream: false,
-                    options: { temperature: 0.3 }
-                })
-            });
+            // Llamada a Ollama con manejo robusto de errores
+            try {
+                const response = await fetch("https://ollama-rapiredissas.ginee6.easypanel.host/api/generate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        model: "llama3.2:1b",
+                        prompt: `${CONTEXT}\n\nUsuario: ${userMsg.text}\nRapiBot:`,
+                        stream: false,
+                        options: { temperature: 0.3 }
+                    })
+                });
 
-            if (!response.ok) throw new Error("API Error");
-            const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: Verifica CORS en Easypanel.`);
+                }
 
-            setMessages(prev => [...prev, {
-                id: (Date.now() + 1).toString(),
-                text: data.response,
-                sender: "bot",
-                timestamp: new Date()
-            }]);
+                const data = await response.json();
 
-        } catch (error) {
-            console.error("AI Error:", error);
-            // Fallback local si falla la API
-            const fallbackResponse = generateResponse(userMsg.text);
-            setMessages(prev => [...prev, {
-                id: (Date.now() + 1).toString(),
-                text: fallbackResponse + " (Nota: Estoy funcionando en modo sin conexión)",
-                sender: "bot",
-                timestamp: new Date()
-            }]);
+                setMessages(prev => [...prev, {
+                    id: (Date.now() + 1).toString(),
+                    text: data.response,
+                    sender: "bot",
+                    timestamp: new Date()
+                }]);
+
+            } catch (networkError) {
+                console.error("AI Error:", networkError);
+                // Fallback inteligente
+                const fallbackResponse = generateResponse(userMsg.text);
+                setMessages(prev => [...prev, {
+                    id: (Date.now() + 1).toString(),
+                    text: `⚠️ ERROR DE CONEXIÓN IA: No pude contactar al cerebro de Ollama. (Tip: Revisa que la variable OLLAMA_ORIGINS="*" esté puesta en Easypanel).\n\nRespuesta básica: ${fallbackResponse}`,
+                    sender: "bot",
+                    timestamp: new Date()
+                }]);
+            }
         } finally {
             setIsTyping(false);
         }

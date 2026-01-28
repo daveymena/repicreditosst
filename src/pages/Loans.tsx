@@ -386,97 +386,101 @@ const Loans = () => {
                                 </Button>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Número</TableHead>
-                                            <TableHead>Cliente</TableHead>
-                                            <TableHead>Monto</TableHead>
-                                            <TableHead>Pagado</TableHead>
-                                            <TableHead>Saldo</TableHead>
-                                            <TableHead>Progreso</TableHead>
-                                            <TableHead>Frecuencia</TableHead>
-                                            <TableHead>Estado</TableHead>
-                                            <TableHead className="text-right">Acciones</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredLoans.map((loan, index) => (
-                                            <motion.tr
-                                                key={loan.id}
-                                                initial={{ opacity: 0, y: 20 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: index * 0.05 }}
-                                                className="group hover:bg-secondary/50 transition-colors"
-                                            >
-                                                <TableCell className="font-medium">{loan.loan_number}</TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <p className="font-medium">{loan.clients?.full_name}</p>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {loan.clients?.phone}
-                                                        </p>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="font-semibold">
-                                                    {formatCurrency(loan.total_amount)}
-                                                </TableCell>
-                                                <TableCell className="text-success">
-                                                    {formatCurrency(loan.paid_amount || 0)}
-                                                </TableCell>
-                                                <TableCell className="text-primary font-semibold">
-                                                    {formatCurrency(loan.remaining_amount)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="space-y-1">
-                                                        <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-                                                            <div
-                                                                className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-500"
-                                                                style={{ width: `${calculateProgress(loan)}%` }}
-                                                            />
+                            <>
+                                {/* Vista Desktop: Tabla */}
+                                <div className="hidden md:block overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Número</TableHead>
+                                                <TableHead>Cliente</TableHead>
+                                                <TableHead>Monto</TableHead>
+                                                <TableHead>Pagado</TableHead>
+                                                <TableHead>Saldo</TableHead>
+                                                <TableHead>Progreso</TableHead>
+                                                <TableHead>Frecuencia</TableHead>
+                                                <TableHead>Estado</TableHead>
+                                                <TableHead className="text-right">Acciones</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredLoans.map((loan) => (
+                                                <TableRow key={loan.id} className="group hover:bg-secondary/50">
+                                                    <TableCell className="font-medium">{loan.loan_number}</TableCell>
+                                                    <TableCell>
+                                                        <div>
+                                                            <p className="font-medium">{loan.clients?.full_name}</p>
+                                                            <p className="text-xs text-muted-foreground">{loan.clients?.phone}</p>
                                                         </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {loan.paid_installments || 0}/{loan.installments} cuotas
-                                                        </p>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>{getFrequencyLabel(loan.frequency)}</TableCell>
-                                                <TableCell>{getStatusBadge(loan.status)}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => navigate(`/loans/${loan.id}`)}
-                                                        >
+                                                    </TableCell>
+                                                    <TableCell>{formatCurrency(loan.total_amount)}</TableCell>
+                                                    <TableCell className="text-success">{formatCurrency(loan.paid_amount || 0)}</TableCell>
+                                                    <TableCell className="text-primary font-semibold">{formatCurrency(loan.remaining_amount)}</TableCell>
+                                                    <TableCell>
+                                                        <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
+                                                            <div className="h-full bg-primary" style={{ width: `${calculateProgress(loan)}%` }} />
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>{getFrequencyLabel(loan.frequency)}</TableCell>
+                                                    <TableCell>{getStatusBadge(loan.status)}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="sm" onClick={() => navigate(`/loans/${loan.id}`)}>
                                                             <Eye className="w-4 h-4" />
                                                         </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => navigate(`/loans/${loan.id}/edit`)}
-                                                        >
+                                                        <Button variant="ghost" size="sm" onClick={() => navigate(`/loans/${loan.id}/edit`)}>
                                                             <Edit className="w-4 h-4" />
                                                         </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-destructive"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteLoan(loan.id);
-                                                            }}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {/* Vista Móvil: Tarjetas */}
+                                <div className="grid grid-cols-1 gap-4 md:hidden">
+                                    {filteredLoans.map((loan) => (
+                                        <Card key={loan.id} className="bg-card hover:bg-muted/20 transition-colors" onClick={() => navigate(`/loans/${loan.id}`)}>
+                                            <CardContent className="p-4 space-y-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="font-bold text-lg text-primary">{loan.clients?.full_name}</span>
+                                                            <Badge variant="outline" className="text-[10px] h-5">{loan.loan_number}</Badge>
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" />
+                                                            {getFrequencyLabel(loan.frequency)}
+                                                        </p>
                                                     </div>
-                                                </TableCell>
-                                            </motion.tr>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                                    {getStatusBadge(loan.status)}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                                    <div className="bg-secondary/30 p-2 rounded-lg">
+                                                        <p className="text-xs text-muted-foreground">Prestado</p>
+                                                        <p className="font-semibold">{formatCurrency(loan.total_amount)}</p>
+                                                    </div>
+                                                    <div className="bg-secondary/30 p-2 rounded-lg">
+                                                        <p className="text-xs text-muted-foreground">Saldo</p>
+                                                        <p className="font-bold text-destructive">{formatCurrency(loan.remaining_amount)}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                                        <span>Progreso de pago</span>
+                                                        <span>{Math.round(calculateProgress(loan))}%</span>
+                                                    </div>
+                                                    <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                                                        <div className="h-full bg-gradient-to-r from-success to-primary transition-all duration-500" style={{ width: `${calculateProgress(loan)}%` }} />
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </>
                         )}
                     </CardContent>
                 </Card>
