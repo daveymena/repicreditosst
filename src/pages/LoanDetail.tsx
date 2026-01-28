@@ -315,36 +315,36 @@ const LoanDetail = () => {
                             <ArrowLeft className="w-5 h-5" />
                         </Button>
                         <div>
-                            <h1 className="text-3xl font-bold text-foreground">Detalle del Préstamo</h1>
+                            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Detalle del Préstamo</h1>
                             <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground">{loan.loan_number}</span>
                                 <Badge variant="outline" className="bg-primary/5">{loan.clients?.full_name}</Badge>
                             </div>
                         </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                         {loan.status === 'completed' && (
-                            <Button variant="outline" onClick={handleDownloadPazYSalvo} className="border-success text-success hover:bg-success/5">
+                            <Button variant="outline" onClick={handleDownloadPazYSalvo} className="w-full sm:w-auto border-success text-success hover:bg-success/5">
                                 <CheckCircle className="mr-2 w-5 h-5" />
-                                Descargar Paz y Salvo
+                                Paz y Salvo
                             </Button>
                         )}
                         <Button
                             variant="outline"
                             onClick={() => navigate(`/loans/${loan.id}/edit`)}
-                            className="flex"
+                            className="w-full sm:w-auto flex justify-center"
                         >
                             <Calendar className="mr-2 w-4 h-4" />
                             Ajustar Plan
                         </Button>
                         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
                             <DialogTrigger asChild>
-                                <Button className="bg-gradient-primary hover:opacity-90 shadow-glow" disabled={loan.status === 'completed'}>
+                                <Button className="w-full sm:w-auto bg-gradient-primary hover:opacity-90 shadow-glow" disabled={loan.status === 'completed'}>
                                     <Plus className="mr-2 w-5 h-5" />
-                                    {loan.status === 'completed' ? 'Préstamo Pagado' : 'Registrar Abono'}
+                                    {loan.status === 'completed' ? 'Pagado' : 'Registrar Abono'}
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent>
+                            <DialogContent className="w-[95vw] max-w-lg rounded-xl">
                                 <DialogHeader><DialogTitle>Registrar Pago</DialogTitle><DialogDescription>Ingresa el monto para el abono #{paymentForm.installmentNumber}.</DialogDescription></DialogHeader>
                                 <form onSubmit={handleRegisterPayment} className="space-y-4 py-4">
                                     <div className="space-y-2">
@@ -354,7 +354,7 @@ const LoanDetail = () => {
                                             <Input required type="number" className="pl-10" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2"><Label># Cuota</Label><Input type="number" value={paymentForm.installmentNumber} onChange={(e) => setPaymentForm({ ...paymentForm, installmentNumber: e.target.value })} /></div>
                                         <div className="space-y-2"><Label>Método</Label><Input value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })} /></div>
                                     </div>
