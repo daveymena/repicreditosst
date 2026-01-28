@@ -54,7 +54,7 @@ const SupportChat = () => {
 
             const CONTEXT = "ERES RAPIBOT, ASISTENTE DE RAPICRÉDITOS. RESPONDE CORTO Y AMABLE.";
 
-            const response = await fetch("https://ollama-rapiredissas.ginee6.easypanel.host/api/generate", {
+            const response = await fetch("https://ollama-ollama.ginee6.easypanel.host/api/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
