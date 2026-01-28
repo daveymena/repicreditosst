@@ -504,7 +504,7 @@ const NewLoan = () => {
                                         <CardTitle className="text-lg">Plan de Pagos Sugerido</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="max-h-[300px] overflow-y-auto">
+                                        <div className="max-h-[300px] overflow-y-auto overflow-x-auto">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>

@@ -461,22 +461,24 @@ const LoanDetail = () => {
                                 {payments.length === 0 ? (
                                     <div className="text-center py-10 text-muted-foreground">No hay pagos registrados aún.</div>
                                 ) : (
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow><TableHead>Fecha</TableHead><TableHead>Monto</TableHead><TableHead>Método</TableHead><TableHead>Info</TableHead><TableHead className="text-right">Recibo</TableHead></TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {payments.map((p) => (
-                                                <TableRow key={p.id}>
-                                                    <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
-                                                    <TableCell className="font-bold text-success">{formatCurrency(p.amount)}</TableCell>
-                                                    <TableCell>{p.payment_method}</TableCell>
-                                                    <TableCell>Abono #{p.payment_number}</TableCell>
-                                                    <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(p)}><Download className="w-4 h-4" /></Button></TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                    <div className="overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow><TableHead>Fecha</TableHead><TableHead>Monto</TableHead><TableHead>Método</TableHead><TableHead>Info</TableHead><TableHead className="text-right">Recibo</TableHead></TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {payments.map((p) => (
+                                                    <TableRow key={p.id}>
+                                                        <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
+                                                        <TableCell className="font-bold text-success">{formatCurrency(p.amount)}</TableCell>
+                                                        <TableCell>{p.payment_method}</TableCell>
+                                                        <TableCell>Abono #{p.payment_number}</TableCell>
+                                                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(p)}><Download className="w-4 h-4" /></Button></TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>
