@@ -4,6 +4,7 @@ import { MessageCircle, X, Send, Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 interface Message {
     id: string;
@@ -49,53 +50,45 @@ const SupportChat = () => {
         setIsTyping(true);
 
         try {
-            // Base de conocimiento integrada para contexto inmediato
-            const CONTEXT = `ERES RAPIBOT, ASISTENTE DE RAPICRÉDITOS.
-INFORMACIÓN CLAVE:
-1. CLIENTES: Crear, editar, importar masivamente (CSV) y exportar.
-2. PRÉSTAMOS: Crear con interés simple/compuesto. Ver tabla de amortización y botón "Ajustar Plan" para editar.
-3. PAGOS: Botón "Registrar Abono" en detalle o "Pagar" en tabla. Genera recibos. "Paz y Salvo" al terminar.
-4. SOPORTE: Centro de Ayuda en menú. Recuperación de clave por correo.
-RESPONDE CORTO Y AMABLE.`;
+            console.log("RapiBot: Iniciando comunicación...");
 
-            // Llamada a Ollama con manejo robusto de errores
-            try {
-                const response = await fetch("https://ollama-rapiredissas.ginee6.easypanel.host/api/generate", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        model: "llama3.2:1b",
-                        prompt: `${CONTEXT}\n\nUsuario: ${userMsg.text}\nRapiBot:`,
-                        stream: false,
-                        options: { temperature: 0.3 }
-                    })
-                });
+            const CONTEXT = "ERES RAPIBOT, ASISTENTE DE RAPICRÉDITOS. RESPONDE CORTO Y AMABLE.";
 
-                if (!response.ok) {
-                    throw new Error(`Error ${response.status}: Verifica CORS en Easypanel.`);
-                }
+            const response = await fetch("https://ollama-rapiredissas.ginee6.easypanel.host/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: "llama3.2:1b",
+                    prompt: `${CONTEXT}\n\nPregunta: ${userMsg.text}\nRespuesta:`,
+                    stream: false,
+                    options: { temperature: 0.3 }
+                })
+            });
 
-                const data = await response.json();
+            if (!response.ok) throw new Error("API Error");
 
-                setMessages(prev => [...prev, {
-                    id: (Date.now() + 1).toString(),
-                    text: data.response,
-                    sender: "bot",
-                    timestamp: new Date()
-                }]);
+            const data = await response.json();
 
-            } catch (networkError) {
-                console.error("AI Error:", networkError);
-                // Fallback inteligente
-                const fallbackResponse = generateResponse(userMsg.text);
-                setMessages(prev => [...prev, {
-                    id: (Date.now() + 1).toString(),
-                    text: `⚠️ ERROR DE CONEXIÓN IA: No pude contactar al cerebro de Ollama. (Tip: Revisa que la variable OLLAMA_ORIGINS="*" esté puesta en Easypanel).\n\nRespuesta básica: ${fallbackResponse}`,
-                    sender: "bot",
-                    timestamp: new Date()
-                }]);
+            setMessages(prev => [...prev, {
+                id: (Date.now() + 1).toString(),
+                text: data.response,
+                sender: "bot",
+                timestamp: new Date()
+            }]);
+
+        } catch (error) {
+            console.warn("RapiBot Fallback:", error);
+            const fallback = generateResponse(userMsg.text);
+
+            setMessages(prev => [...prev, {
+                id: (Date.now() + 1).toString(),
+                text: fallback,
+                sender: "bot",
+                timestamp: new Date()
+            }]);
+
+            if (error instanceof TypeError) {
+                toast.error("Error de conexión. Revisa CORS en Easypanel.");
             }
         } finally {
             setIsTyping(false);
