@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import SupportChat from "@/components/support/SupportChat";
+import AdsterraBanner from "@/components/ads/AdsterraBanner";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -42,8 +43,12 @@ const AdSpace = ({ position }: { position: "sidebar" | "banner" | "mobile" }) =>
 
   if (position === "banner") {
     return (
-      <div className="w-full h-[90px] bg-muted/30 border-y border-dashed border-muted flex items-center justify-center my-6">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Espacio Publicitario Premium</span>
+      <div className="w-full flex justify-center">
+        <AdsterraBanner
+          id="632988aee37de508a1cc0aa06bcd69c2"
+          height={90}
+          width={728}
+        />
       </div>
     );
   }
