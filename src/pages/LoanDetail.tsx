@@ -307,61 +307,68 @@ const LoanDetail = () => {
 
     return (
         <DashboardLayout>
-            <div className="space-y-8 pb-12">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={() => navigate("/loans")} className="rounded-full">
+            <div className="max-w-full overflow-x-hidden px-4 md:px-0 space-y-6 pb-20">
+                {/* Header Compacto - Estilo App */}
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="secondary"
+                            size="icon"
+                            onClick={() => navigate("/loans")}
+                            className="h-9 w-9 rounded-full shrink-0"
+                        >
                             <ArrowLeft className="w-5 h-5" />
                         </Button>
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Detalle del Préstamo</h1>
-                            <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">{loan.loan_number}</span>
-                                <Badge variant="outline" className="bg-primary/5">{loan.clients?.full_name}</Badge>
-                            </div>
+                        <div className="min-w-0">
+                            <h1 className="text-xl font-bold truncate">Detalle de Crédito</h1>
+                            <p className="text-xs text-muted-foreground truncate">{loan.loan_number} • {loan.clients?.full_name}</p>
                         </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                        {loan.status === 'completed' && (
-                            <Button variant="outline" onClick={handleDownloadPazYSalvo} className="w-full sm:w-auto border-success text-success hover:bg-success/5">
-                                <CheckCircle className="mr-2 w-5 h-5" />
-                                Paz y Salvo
-                            </Button>
-                        )}
+
+                    {/* Botones de Acción Rápidos */}
+                    <div className="grid grid-cols-2 gap-2">
                         <Button
                             variant="outline"
                             onClick={() => navigate(`/loans/${loan.id}/edit`)}
-                            className="w-full sm:w-auto flex justify-center"
+                            className="w-full text-xs h-9"
                         >
-                            <Calendar className="mr-2 w-4 h-4" />
-                            Ajustar Plan
+                            <Calendar className="mr-2 w-3.5 h-3.5" />
+                            Ajustar
                         </Button>
                         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
                             <DialogTrigger asChild>
-                                <Button className="w-full sm:w-auto bg-gradient-primary hover:opacity-90 shadow-glow" disabled={loan.status === 'completed'}>
-                                    <Plus className="mr-2 w-5 h-5" />
-                                    {loan.status === 'completed' ? 'Pagado' : 'Registrar Abono'}
+                                <Button className="w-full text-xs h-9 bg-gradient-primary" disabled={loan.status === 'completed'}>
+                                    <Plus className="mr-2 w-3.5 h-3.5" />
+                                    Abonar
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="w-[95vw] max-w-lg rounded-xl">
-                                <DialogHeader><DialogTitle>Registrar Pago</DialogTitle><DialogDescription>Ingresa el monto para el abono #{paymentForm.installmentNumber}.</DialogDescription></DialogHeader>
-                                <form onSubmit={handleRegisterPayment} className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>Monto del Abono</Label>
+                            <DialogContent className="w-[92vw] max-w-md rounded-2xl p-4">
+                                <DialogHeader>
+                                    <DialogTitle>Registrar Pago</DialogTitle>
+                                    <DialogDescription>Cuota #{paymentForm.installmentNumber}</DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleRegisterPayment} className="space-y-4 pt-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs">Monto a pagar</Label>
                                         <div className="relative">
-                                            <DollarSign className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                                            <Input required type="number" className="pl-10" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
+                                            <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                                            <Input required type="number" className="pl-9 h-10" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2"><Label># Cuota</Label><Input type="number" value={paymentForm.installmentNumber} onChange={(e) => setPaymentForm({ ...paymentForm, installmentNumber: e.target.value })} /></div>
-                                        <div className="space-y-2"><Label>Método</Label><Input value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })} /></div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs"># Cuota</Label>
+                                            <Input type="number" className="h-10" value={paymentForm.installmentNumber} onChange={(e) => setPaymentForm({ ...paymentForm, installmentNumber: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs">Método</Label>
+                                            <Input className="h-10" value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })} />
+                                        </div>
                                     </div>
-                                    <div className="space-y-2"><Label>Notas</Label><Textarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Ej: Pago por Nequi..." /></div>
-                                    <DialogFooter>
-                                        <Button type="button" variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancelar</Button>
-                                        <Button type="submit" disabled={isSavingPayment}>{isSavingPayment ? "Guardando..." : "Confirmar Pago"}</Button>
+                                    <DialogFooter className="pt-2">
+                                        <Button type="submit" className="w-full" disabled={isSavingPayment}>
+                                            {isSavingPayment ? "Procesando..." : "Confirmar Pago"}
+                                        </Button>
                                     </DialogFooter>
                                 </form>
                             </DialogContent>
@@ -369,211 +376,127 @@ const LoanDetail = () => {
                     </div>
                 </div>
 
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Resumen Financiero y Plan de Pagos */}
-                    <div className="lg:col-span-2 space-y-8">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <Card className="bg-primary/5 border-primary/10 relative overflow-hidden">
-                                <CardContent className="pt-6">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Monto Total</p>
-                                            <p className="text-2xl font-bold">{formatCurrency(loan.total_amount)}</p>
-                                        </div>
-                                        <TrendingUp className="w-8 h-8 text-primary/20 absolute -right-1 -bottom-1" />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-success/5 border-success/10 relative overflow-hidden">
-                                <CardContent className="pt-6">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-xs font-medium text-success uppercase tracking-wider mb-1">Total Pagado</p>
-                                            <p className="text-2xl font-bold text-success">{formatCurrency(loan.paid_amount || 0)}</p>
-                                        </div>
-                                        <CheckCircle className="w-8 h-8 text-success/20 absolute -right-1 -bottom-1" />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-destructive/5 border-destructive/10 relative overflow-hidden">
-                                <CardContent className="pt-6">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-1">Saldo Pendiente</p>
-                                            <p className="text-2xl font-bold text-destructive">{formatCurrency(loan.remaining_amount)}</p>
-                                        </div>
-                                        <AlertCircle className="w-8 h-8 text-destructive/20 absolute -right-1 -bottom-1" />
-                                    </div>
-                                </CardContent>
-                            </Card>
+                {/* Resumen de Saldo Animado */}
+                <Card className="bg-gradient-to-br from-primary to-primary-dark text-white border-none shadow-lg overflow-hidden relative">
+                    <CardContent className="p-5">
+                        <div className="relative z-10">
+                            <p className="text-primary-foreground/80 text-xs font-medium uppercase tracking-wider">Saldo Pendiente</p>
+                            <h2 className="text-3xl font-bold mt-1">{formatCurrency(loan.remaining_amount)}</h2>
+                            <div className="flex items-center gap-2 mt-4 text-[10px]">
+                                <div className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md">
+                                    {loan.paid_installments} / {loan.installments} Cuotas
+                                </div>
+                                <div className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md italic">
+                                    Tasa: {loan.interest_rate}%
+                                </div>
+                                {loan.status === 'completed' && (
+                                    <Badge className="bg-success text-white border-none animate-pulse">PAGADO</Badge>
+                                )}
+                            </div>
                         </div>
+                        <TrendingUp className="w-24 h-24 text-white/10 absolute -right-4 -bottom-4 rotate-12" />
+                    </CardContent>
+                </Card>
 
-                        {/* Plan de Pagos Sugerido (Amortización) */}
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg">Plan de Pagos</CardTitle>
-                                    <CardDescription>Cronograma de cuotas programadas</CardDescription>
-                                </div>
-                                <Calendar className="w-5 h-5 text-muted-foreground" />
+                {/* Grid de Contenido - Mobile Stacked, Desktop 3 Cols */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Info de Cuotas */}
+                        <Card className="border-none shadow-sm bg-secondary/20">
+                            <CardHeader className="p-4 pb-2">
+                                <CardTitle className="text-sm font-bold flex items-center justify-between">
+                                    Plan de Pagos
+                                    <span className="text-[10px] font-normal text-muted-foreground">Próximos vencimientos</span>
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="hidden md:block overflow-x-auto">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-[80px]">#</TableHead>
-                                                <TableHead>Fecha Programada</TableHead>
-                                                <TableHead>Monto</TableHead>
-                                                <TableHead>Estado</TableHead>
-                                                <TableHead className="text-right">Acción</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {schedule.map((inst) => (
-                                                <TableRow key={inst.number} className={inst.isPaid ? "opacity-60 bg-secondary/20" : ""}>
-                                                    <TableCell className="font-medium">Cuota {inst.number}</TableCell>
-                                                    <TableCell>{new Date(inst.date).toLocaleDateString()}</TableCell>
-                                                    <TableCell className="font-semibold">{formatCurrency(inst.amount)}</TableCell>
-                                                    <TableCell>
-                                                        {inst.isPaid ? (
-                                                            <Badge variant="outline" className="bg-success/10 text-success border-success/20">Pagada</Badge>
-                                                        ) : (
-                                                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">Pendiente</Badge>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        {!inst.isPaid && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="text-primary hover:text-primary hover:bg-primary/10 h-8"
-                                                                onClick={() => {
-                                                                    setPaymentForm(prev => ({
-                                                                        ...prev,
-                                                                        amount: inst.amount.toString(),
-                                                                        installmentNumber: inst.number.toString()
-                                                                    }));
-                                                                    setShowPaymentDialog(true);
-                                                                }}
-                                                            >
-                                                                Pagar
-                                                            </Button>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-
-                                {/* Vista Móvil: Cuotas */}
-                                <div className="md:hidden space-y-3">
+                            <CardContent className="p-4 pt-0">
+                                <div className="space-y-2">
                                     {schedule.map((inst) => (
-                                        <div key={inst.number} className={`flex items-center justify-between p-3 rounded-lg border ${inst.isPaid ? 'bg-secondary/20' : 'bg-card'}`}>
+                                        <div
+                                            key={inst.number}
+                                            className={`flex items-center justify-between p-3 rounded-xl border bg-card transition-all ${inst.isPaid ? 'opacity-50 ring-1 ring-success/20' : 'shadow-sm active:scale-[0.98]'}`}
+                                            onClick={() => {
+                                                if (!inst.isPaid) {
+                                                    setPaymentForm(prev => ({ ...prev, amount: inst.amount.toString(), installmentNumber: inst.number.toString() }));
+                                                    setShowPaymentDialog(true);
+                                                }
+                                            }}
+                                        >
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${inst.isPaid ? 'bg-success/20 text-success' : 'bg-primary/10 text-primary'}`}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${inst.isPaid ? 'bg-success/20 text-success' : 'bg-primary/10 text-primary'}`}>
                                                     {inst.number}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-sm">{formatCurrency(inst.amount)}</p>
-                                                    <p className="text-xs text-muted-foreground">{new Date(inst.date).toLocaleDateString()}</p>
+                                                    <p className="font-bold text-sm tracking-tight">{formatCurrency(inst.amount)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">{new Date(inst.date).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
-                                            <div>
-                                                {inst.isPaid ? (
-                                                    <CheckCircle className="w-5 h-5 text-success" />
-                                                ) : (
-                                                    <Button size="sm" onClick={() => {
-                                                        setPaymentForm(prev => ({ ...prev, amount: inst.amount.toString(), installmentNumber: inst.number.toString() }));
-                                                        setShowPaymentDialog(true);
-                                                    }}>Pagar</Button>
-                                                )}
-                                            </div>
+                                            {inst.isPaid ? <CheckCircle className="w-5 h-5 text-success" /> : <Plus className="w-4 h-4 text-primary" />}
                                         </div>
                                     ))}
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* Historial de Pagos Reales */}
-                        <Card>
-                            <CardHeader><CardTitle className="text-lg">Historial de Transacciones</CardTitle></CardHeader>
-                            <CardContent>
-                                {payments.length === 0 ? (
-                                    <div className="text-center py-10 text-muted-foreground">No hay pagos registrados aún.</div>
-                                ) : (
-                                    <>
-                                        {/* Desktop Table */}
-                                        <div className="hidden md:block overflow-x-auto">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow><TableHead>Fecha</TableHead><TableHead>Monto</TableHead><TableHead>Método</TableHead><TableHead>Info</TableHead><TableHead className="text-right">Recibo</TableHead></TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {payments.map((p) => (
-                                                        <TableRow key={p.id}>
-                                                            <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
-                                                            <TableCell className="font-bold text-success">{formatCurrency(p.amount)}</TableCell>
-                                                            <TableCell>{p.payment_method}</TableCell>
-                                                            <TableCell>Abono #{p.payment_number}</TableCell>
-                                                            <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(p)}><Download className="w-4 h-4" /></Button></TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                        {/* Mobile Cards */}
-                                        <div className="md:hidden space-y-3">
-                                            {payments.map((p) => (
-                                                <div key={p.id} className="p-3 border rounded-lg bg-card flex justify-between items-center">
-                                                    <div>
-                                                        <p className="font-bold text-success">{formatCurrency(p.amount)}</p>
-                                                        <p className="text-xs text-muted-foreground">{new Date(p.payment_date).toLocaleDateString()} - Abono #{p.payment_number}</p>
-                                                    </div>
-                                                    <Button variant="outline" size="sm" onClick={() => handleDownloadReceipt(p)}>
-                                                        <Download className="w-4 h-4 mr-2" /> Recibo
-                                                    </Button>
+                        {/* Historial Compacto */}
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-bold px-1">Historial de Pagos</h3>
+                            {payments.length === 0 ? (
+                                <p className="text-xs text-center py-6 text-muted-foreground italic">No hay pagos registrados aún.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {payments.map((p) => (
+                                        <div key={p.id} className="p-3 border rounded-xl bg-card flex justify-between items-center shadow-xs">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                                                    <Download className="w-4 h-4 text-success" />
                                                 </div>
-                                            ))}
+                                                <div>
+                                                    <p className="font-bold text-sm text-success">{formatCurrency(p.amount)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Abono #{p.payment_number} • {new Date(p.payment_date).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(p)} className="h-8 w-8">
+                                                <Download className="w-4 h-4" />
+                                            </Button>
                                         </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Información Lateral */}
-                    <div className="space-y-6">
-                        <Card className="border-primary/20 bg-gradient-to-br from-card to-secondary/20">
-                            <CardHeader><CardTitle className="text-lg">Detalles Técnicos</CardTitle></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Estado:</span>{getStatusBadge(loan.status)}</div>
-                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tasa:</span><span className="font-medium">{loan.interest_rate}% {loan.interest_type || 'simple'}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Frecuencia:</span><span className="font-medium capitalize">{loan.frequency}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Progreso:</span><span className="font-medium">{loan.paid_installments} / {loan.installments} cuotas</span></div>
-                                <Separator className="bg-primary/10" />
-                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Fecha Inicio:</span><span className="font-medium">{new Date(loan.start_date).toLocaleDateString()}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Vencimiento:</span><span className="font-medium">{new Date(loan.end_date).toLocaleDateString()}</span></div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><User className="w-4 h-4 text-primary" />Cliente</CardTitle></CardHeader>
-                            <CardContent className="space-y-4">
-                                <div><p className="font-bold text-lg leading-tight">{loan.clients?.full_name}</p><p className="text-sm text-muted-foreground">{loan.clients?.email}</p></div>
-                                <div className="flex items-center gap-2 text-sm font-medium"><Phone className="w-4 h-4 text-success" />{loan.clients?.phone}</div>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" className="flex-1" onClick={() => navigate(`/clients/${loan.clients?.id}`)}>Ver Perfil</Button>
-                                    <Button variant="outline" size="icon" onClick={() => window.open(`https://wa.me/${loan.clients?.phone.replace(/\D/g, '')}`, '_blank')}><Phone className="w-4 h-4" /></Button>
+                    {/* Sidebar a Fondo en Móvil */}
+                    <div className="space-y-4">
+                        <Card className="rounded-2xl border-none bg-muted/30">
+                            <CardContent className="p-4 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                        <User className="w-5 h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-sm truncate">{loan.clients?.full_name}</p>
+                                        <p className="text-[10px] text-muted-foreground">{loan.clients?.phone}</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button variant="outline" size="sm" className="text-[10px] h-8" onClick={() => navigate(`/clients/${loan.clients?.id}`)}>Perfil</Button>
+                                    <Button variant="outline" size="sm" className="text-[10px] h-8 bg-success/5 border-success/20 text-success" onClick={() => window.open(`https://wa.me/${loan.clients?.phone.replace(/\D/g, '')}`, '_blank')}>WhatsApp</Button>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-accent/5 border-accent/20">
-                            <CardHeader><CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Notas Internas</CardTitle></CardHeader>
-                            <CardContent><p className="text-sm italic">{loan.notes || "Sin notas registradas para este préstamo."}</p></CardContent>
-                        </Card>
+                        <div className="bg-accent/5 rounded-2xl p-4 border border-accent/10">
+                            <p className="text-[10px] font-bold text-accent uppercase mb-1">Notas del crédito</p>
+                            <p className="text-xs italic text-muted-foreground">{loan.notes || "Sin notas adicionales."}</p>
+                        </div>
+
+                        {loan.status === 'completed' && (
+                            <Button onClick={handleDownloadPazYSalvo} className="w-full bg-success hover:bg-success/90 text-white font-bold h-10 rounded-xl">
+                                <CheckCircle className="mr-2 w-4 h-4" />
+                                Generar Paz y Salvo
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
