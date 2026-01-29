@@ -65,15 +65,46 @@ const AdSpace = ({ position }: { position: "sidebar" | "banner" | "mobile" | "fi
     );
   }
 
+  if (position === "fixed-bottom") {
+    return (
+      <div className="fixed bottom-0 left-0 w-full z-40 bg-background/80 backdrop-blur-sm border-t flex justify-center py-1 lg:hidden">
+        {/* Espacio para Banner Móvil 320x50 */}
+        <div className="w-[320px] h-[50px] bg-muted/20 animate-pulse flex items-center justify-center text-[8px] text-muted-foreground uppercase">
+          Publicidad
+        </div>
+      </div>
+    );
+  }
+
   return null;
 };
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isPro, setIsPro] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const checkSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("subscription_status")
+          .eq("user_id", user.id)
+          .single();
+
+        // Asumimos que si el status es 'pro' o 'active', se ocultan los anuncios
+        if (profile?.subscription_status === "pro" || profile?.subscription_status === "active") {
+          setIsPro(true);
+        }
+      }
+    };
+    checkSubscription();
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -226,7 +257,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           ))}
 
           {/* Espacio Publicitario en Sidebar */}
-          {isSidebarOpen && (
+          {isSidebarOpen && !isPro && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -287,19 +318,21 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
 
           {/* Espacio Publicitario Banner Superior */}
-          <div className="w-full mb-6 lg:mb-8">
-            <AdSpace position="banner" />
-          </div>
+          {!isPro && (
+            <div className="w-full mb-6 lg:mb-8">
+              <AdSpace position="banner" />
+            </div>
+          )}
 
           <div className="max-w-7xl mx-auto space-y-6 pb-4">
             {children}
             {/* Pie de Página Publicitario */}
-            <AdSpace position="footer" />
+            {!isPro && <AdSpace position="footer" />}
           </div>
         </div>
       </main>
       <SupportChat />
-      <AdSpace position="fixed-bottom" />
+      {!isPro && <AdSpace position="fixed-bottom" />}
     </div>
   );
 };

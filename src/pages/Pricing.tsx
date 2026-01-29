@@ -8,6 +8,7 @@ import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Inicializar MercadoPago dentro del componente o controlando errores
 // initMercadoPago('APP_USR-23c2d74a-d01f-473e-a305-0e5999f023bc');
@@ -66,10 +67,23 @@ const Pricing = () => {
         }
     };
 
-    const handlePayPalApprove = (data: any, actions: any) => {
-        return actions.order.capture().then((details: any) => {
-            toast.success("Pago completado por " + details.payer.name.given_name);
-            // Aquí llamarías a tu backend para activar la suscripción
+    const handlePayPalApprove = async (data: any, actions: any) => {
+        return actions.order.capture().then(async (details: any) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { error } = await supabase
+                    .from("profiles")
+                    .update({ subscription_status: "pro" })
+                    .eq("user_id", user.id);
+
+                if (error) {
+                    console.error("Error activating subscription:", error);
+                    toast.error("Hubo un error al activar tu plan Pro");
+                } else {
+                    toast.success("¡Pago completado! Ahora eres Pro.");
+                    window.location.reload(); // Recargar para aplicar cambios
+                }
+            }
         });
     };
 
