@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import AdsterraSocialBar from './AdsterraSocialBar';
 import AdsterraPopUnder from './AdsterraPopUnder';
+import PopAds from './PopAds';
 
 const AdsManager = () => {
     const [isPro, setIsPro] = useState(false);
@@ -21,6 +21,8 @@ const AdsManager = () => {
                     if (profile?.subscription_status === "pro" || profile?.subscription_status === "active") {
                         setIsPro(true);
                     }
+                } else {
+                    setIsPro(false);
                 }
             } catch (error) {
                 console.error("Error checking ads status:", error);
@@ -31,7 +33,6 @@ const AdsManager = () => {
 
         checkSubscription();
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
             checkSubscription();
         });
@@ -44,8 +45,8 @@ const AdsManager = () => {
 
     return (
         <>
-            <AdsterraSocialBar />
             <AdsterraPopUnder />
+            <PopAds />
         </>
     );
 };
