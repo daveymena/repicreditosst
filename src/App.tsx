@@ -26,6 +26,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsAndConditions from "@/pages/TermsAndConditions";
 import NotFound from "@/pages/NotFound";
 import Help from "@/pages/Help";
+import AdsManager from "@/components/ads/AdsManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <AdsManager />
           <BrowserRouter>
             <Routes>
               {/* Public Routes */}

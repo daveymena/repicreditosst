@@ -21,7 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import SupportChat from "@/components/support/SupportChat";
 import AdsterraBanner from "@/components/ads/AdsterraBanner";
-import AdsterraSocialBar from "@/components/ads/AdsterraSocialBar";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -335,7 +334,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <SupportChat />
       {!isPro && (
         <>
-          <AdsterraSocialBar />
           <AdSpace position="fixed-bottom" />
         </>
       )}

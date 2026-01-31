@@ -3,181 +3,167 @@ import makeWASocket, {
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
-    WASocket,
-    ConnectionState
+    type WASocket,
+    delay
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
-import * as fs from 'fs';
-import * as path from 'path';
+import path from 'path';
 import pino from 'pino';
 import { AIService } from './aiService';
+import { createClient } from '@supabase/supabase-js';
+import { fileURLToPath } from 'url';
 
-// Configuración Anti-Baneo
-const MIN_DELAY = parseInt(process.env.MIN_DELAY || '5000');
-const MAX_DELAY = parseInt(process.env.MAX_DELAY || '15000');
-const SESSION_NAME = process.env.SESSION_NAME || 'rapicredi_auth_info';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const logger = pino({ level: 'silent' });
 
 export class WhatsAppService {
-    private static instance: WhatsAppService;
     private sock: WASocket | null = null;
-    private qrCallback: ((qr: string) => void) | null = null;
-    private statusCallback: ((status: string) => void) | null = null;
-    private aiService: AIService;
+    private sessionId: string;
+    private userId: string;
+    private supabase;
 
-    private constructor() {
-        this.aiService = AIService.getInstance();
-        this.connectToWhatsApp();
+    constructor(sessionId: string, userId: string) {
+        this.sessionId = sessionId;
+        this.userId = userId;
+        this.supabase = createClient(
+            process.env.SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
     }
 
-    public static getInstance(): WhatsAppService {
-        if (!WhatsAppService.instance) {
-            WhatsAppService.instance = new WhatsAppService();
-        }
-        return WhatsAppService.instance;
-    }
+    async init() {
+        console.log(`[WA] Inicializando sesión: ${this.sessionId}`);
 
-    public setQRCallback(callback: (qr: string) => void) {
-        this.qrCallback = callback;
-    }
+        const { state, saveCreds } = await useMultiFileAuthState(
+            path.join(__dirname, `../../sessions/${this.sessionId}`)
+        );
 
-    public setStatusCallback(callback: (status: string) => void) {
-        this.statusCallback = callback;
-    }
-
-    async connectToWhatsApp() {
-        // Asegurar que existe el directorio de sesión
-        const sessionPath = path.resolve(__dirname, '..', '..', 'sessions', SESSION_NAME);
-        if (!fs.existsSync(path.dirname(sessionPath))) {
-            fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
-        }
-
-        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
         const { version } = await fetchLatestBaileysVersion();
 
         this.sock = makeWASocket({
             version,
-            logger: pino({ level: 'silent' }) as any,
-            printQRInTerminal: true,
             auth: {
                 creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }) as any),
+                keys: makeCacheableSignalKeyStore(state.keys, logger),
             },
-            browser: ['RapiCréditos Pro', 'Chrome', '1.0.0'],
-            generateHighQualityLinkPreview: true,
+            printQRInTerminal: false,
+            logger,
+            browser: ['RapiCredi AI', 'Chrome', '1.0.0']
         });
 
-        // Manejo de eventos de conexión
-        this.sock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
+        this.sock.ev.on('creds.update', saveCreds);
+
+        this.sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                console.log('Nuevo QR generado');
-                if (this.qrCallback) this.qrCallback(qr);
-                if (this.statusCallback) this.statusCallback('qr_ready');
+                console.log(`[WA] QR generado para ${this.sessionId}`);
+                await this.supabase
+                    .from('whatsapp_sessions')
+                    .update({ qr_code: qr, status: 'qr_ready' })
+                    .eq('id', this.sessionId);
             }
 
             if (connection === 'close') {
-                const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-                console.log('Conexión cerrada. Reconectando:', shouldReconnect);
-                if (this.statusCallback) this.statusCallback('disconnected');
+                const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+                const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-                if (shouldReconnect) {
-                    this.connectToWhatsApp();
-                } else {
-                    console.log('Desconectado. Limpiando credenciales...');
-                    // Opcional: Borrar sesión si se cerró sesión
-                }
+                await this.supabase
+                    .from('whatsapp_sessions')
+                    .update({ status: 'disconnected', qr_code: null })
+                    .eq('id', this.sessionId);
+
+                console.log(`[WA] Conexión cerrada para ${this.sessionId}. Motivo: ${statusCode}. Reconectando: ${shouldReconnect}`);
+                if (shouldReconnect) this.init();
             } else if (connection === 'open') {
-                console.log('¡Conexión WhatsApp Exitosa!');
-                if (this.statusCallback) this.statusCallback('connected');
+                console.log(`[WA] ✅ Sesión Conectada: ${this.sessionId}`);
+                await this.supabase
+                    .from('whatsapp_sessions')
+                    .update({
+                        status: 'connected',
+                        qr_code: null,
+                        last_connected_at: new Date().toISOString()
+                    })
+                    .eq('id', this.sessionId);
             }
         });
 
-        // Guardar credenciales cuando se actualicen
-        this.sock.ev.on('creds.update', saveCreds);
-
-        // Escuchar mensajes entrantes (IA Conversacional)
         this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type !== 'notify') return;
 
             for (const msg of messages) {
-                if (!msg.key.fromMe && msg.message) {
-                    const sender = msg.key.remoteJid;
-                    const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
+                if (!msg.message || msg.key.fromMe) continue;
 
-                    if (sender && text) {
-                        try {
-                            // Simular "escribiendo..."
-                            await this.sock!.sendPresenceUpdate('composing', sender);
+                const remoteJid = msg.key.remoteJid!;
+                const body = msg.message.conversation || msg.message.extendedTextMessage?.text;
 
-                            // Delay aleatorio corto para parecer humano
-                            await this.randomDelay(2000, 5000);
+                if (!body) continue;
 
-                            // Obtener nombre del contacto (si es posible)
-                            const contactName = msg.pushName || 'Cliente';
+                // 1. Obtener configuración de la sesión
+                const { data: session } = await this.supabase
+                    .from('whatsapp_sessions')
+                    .select('agent_id')
+                    .eq('id', this.sessionId)
+                    .single();
 
-                            // Generar respuesta con IA
-                            const response = await this.aiService.chatWithClient(contactName, text);
+                if (session?.agent_id) {
+                    // 2. Obtener prompt del agente
+                    const { data: agent } = await this.supabase
+                        .from('ai_agents')
+                        .select('system_prompt, model_name, temperature')
+                        .eq('id', session.agent_id)
+                        .single();
 
-                            // Enviar respuesta
-                            await this.sock!.sendMessage(sender, { text: response });
-                        } catch (e) {
-                            console.error('Error respondiendo mensaje con IA:', e);
-                        }
+                    if (agent) {
+                        await this.sock!.sendPresenceUpdate('composing', remoteJid);
+                        await delay(1000);
+
+                        const aiResponse = await AIService.getInstance().generateResponse(
+                            agent.system_prompt,
+                            body,
+                            {
+                                provider: process.env.AI_PROVIDER || 'ollama',
+                                model: agent.model_name,
+                                baseUrl: process.env.AI_BASE_URL || undefined
+                            }
+                        );
+
+                        await this.sock!.sendMessage(remoteJid, { text: aiResponse });
+
+                        // Guardar mensaje en historial
+                        await this.supabase.from('messages').insert([{
+                            conversation_id: await this.getOrCreateConversation(remoteJid, session.agent_id),
+                            sender_type: 'agent',
+                            content: aiResponse
+                        }]);
                     }
                 }
             }
         });
     }
 
-    /**
-     * Envía un mensaje de recordatorio con medidas anti-baneo
-     */
-    async sendReminder(phone: string, message: string): Promise<boolean> {
-        if (!this.sock) return false;
+    private async getOrCreateConversation(customerPhone: string, agentId: string) {
+        const { data: conv } = await this.supabase
+            .from('conversations')
+            .select('id')
+            .eq('customer_phone', customerPhone)
+            .eq('user_id', this.userId)
+            .single();
 
-        try {
-            // Formatear número (Asegurar formato internacional sin +)
-            const jid = phone.includes('@s.whatsapp.net') ? phone : `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+        if (conv) return conv.id;
 
-            // 1. Simular presencia (En línea)
-            await this.sock.sendPresenceUpdate('available', jid);
+        const { data: newConv } = await this.supabase
+            .from('conversations')
+            .insert([{
+                user_id: this.userId,
+                session_id: this.sessionId,
+                customer_phone: customerPhone,
+                agent_id: agentId,
+                status: 'active'
+            }])
+            .select()
+            .single();
 
-            // 2. Simular "escribiendo..."
-            await this.sock.sendPresenceUpdate('composing', jid);
-
-            // 3. Esperar un tiempo humano basado en la longitud del mensaje
-            // Aproximadamente 50ms por caracter + delay aleatorio
-            const typingDuration = message.length * 50 + Math.random() * 1000;
-            await this.delay(Math.min(typingDuration, 5000)); // Máximo 5s escribiendo
-
-            // 4. Pausar "escribiendo"
-            await this.sock.sendPresenceUpdate('paused', jid);
-
-            // 5. Enviar mensaje
-            await this.sock.sendMessage(jid, { text: message });
-
-            console.log(`Mensaje enviado a ${phone}`);
-            return true;
-        } catch (error) {
-            console.error(`Error enviando mensaje a ${phone}:`, error);
-            return false;
-        }
-    }
-
-    /**
-     * Genera un delay aleatorio para evitar detección de bot
-     */
-    async randomDelay(min: number = MIN_DELAY, max: number = MAX_DELAY) {
-        const ms = Math.floor(Math.random() * (max - min + 1) + min);
-        await new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    private delay(ms: number) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    public isConnected(): boolean {
-        return !!this.sock?.user;
+        return newConv.id;
     }
 }

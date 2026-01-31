@@ -41,6 +41,8 @@ interface ProfileData {
     currency: string;
     default_interest_rate: number;
     late_fee_policy: string;
+    payment_qr_url: string;
+    payment_instructions: string;
 }
 
 const Profile = () => {
@@ -59,6 +61,8 @@ const Profile = () => {
         currency: "COP",
         default_interest_rate: 20,
         late_fee_policy: "Los pagos atrasados generan un cargo adicional del 5% sobre el valor de la cuota.",
+        payment_qr_url: "",
+        payment_instructions: "",
     });
 
     useEffect(() => {
@@ -99,6 +103,8 @@ const Profile = () => {
                     currency: data.currency || "COP",
                     default_interest_rate: data.default_interest_rate || 20,
                     late_fee_policy: data.late_fee_policy || "Los pagos atrasados generan un cargo adicional del 5% sobre el valor de la cuota.",
+                    payment_qr_url: data.payment_qr_url || "",
+                    payment_instructions: data.payment_instructions || "",
                 });
             } else {
                 setProfileData({ ...profileData, email: user.email || "" });
@@ -144,6 +150,8 @@ const Profile = () => {
                 currency: profileData.currency,
                 default_interest_rate: Number(profileData.default_interest_rate),
                 late_fee_policy: profileData.late_fee_policy,
+                payment_qr_url: profileData.payment_qr_url,
+                payment_instructions: profileData.payment_instructions,
                 updated_at: new Date().toISOString(),
             };
 
@@ -383,70 +391,75 @@ const Profile = () => {
                             </CardContent>
                         </Card>
 
-                        {/* Loan Settings */}
+                        {/* Payment Settings */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-primary">
-                                    <DollarSign className="w-5 h-5" />
-                                    Configuración de Préstamos
+                                    <CreditCard className="w-5 h-5" />
+                                    Información de Cobro (QR y Cuentas)
                                 </CardTitle>
                                 <CardDescription>
-                                    Define la moneda, tasa de interés y política de mora que verán tus clientes
+                                    Configura cómo quieres que tus clientes te paguen
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="currency">Moneda de Préstamo</Label>
-                                        <div className="relative">
-                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                            <CardContent className="space-y-6">
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <Label>Código QR de Pago</Label>
+                                        <div className="flex flex-col items-center gap-4 p-4 border-2 border-dashed rounded-xl border-muted">
+                                            {profileData.payment_qr_url ? (
+                                                <div className="relative group w-40 h-40">
+                                                    <img
+                                                        src={profileData.payment_qr_url}
+                                                        alt="QR de Pago"
+                                                        className="w-full h-full object-contain rounded-lg shadow-sm"
+                                                    />
+                                                    <Button
+                                                        variant="destructive"
+                                                        size="icon"
+                                                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={() => setProfileData({ ...profileData, payment_qr_url: "" })}
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
+                                                    <Camera className="w-10 h-10 opacity-20" />
+                                                    <p className="text-xs">Sube tu QR de Nequi, Daviplata, etc.</p>
+                                                </div>
+                                            )}
                                             <Input
-                                                id="currency"
-                                                placeholder="COP, USD, MXN..."
-                                                value={profileData.currency}
-                                                onChange={(e) =>
-                                                    setProfileData({ ...profileData, currency: e.target.value })
-                                                }
-                                                className="pl-10"
+                                                id="qr_upload"
+                                                type="url"
+                                                placeholder="Pega el enlace de tu imagen QR aquí"
+                                                value={profileData.payment_qr_url}
+                                                onChange={(e) => setProfileData({ ...profileData, payment_qr_url: e.target.value })}
+                                                className="text-xs"
                                             />
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Por ahora, pega el link directo de tu imagen QR.
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="interestRate">Tasa de Interés % (Referencial)</Label>
-                                        <div className="relative">
-                                            <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                                            <Input
-                                                id="interestRate"
-                                                type="number"
-                                                placeholder="20"
-                                                value={profileData.default_interest_rate}
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="paymentInstructions">Instrucciones de Cuenta</Label>
+                                            <Textarea
+                                                id="paymentInstructions"
+                                                placeholder="Ej: Nequi: 300 123 4567 | Bancolombia Ahorros: 123-45678-90"
+                                                value={profileData.payment_instructions}
                                                 onChange={(e) =>
-                                                    setProfileData({ ...profileData, default_interest_rate: Number(e.target.value) })
+                                                    setProfileData({ ...profileData, payment_instructions: e.target.value })
                                                 }
-                                                className="pl-10"
+                                                className="min-h-[180px] text-sm"
                                             />
                                         </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Estos datos aparecerán en los detalles de préstamo para que se los envíes a tus clientes.
+                                        </p>
                                     </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="lateFee">Política de Mora (Advertencia para el cliente)</Label>
-                                    <div className="relative">
-                                        <AlertCircle className="absolute left-3 top-3 text-muted-foreground w-4 h-4" />
-                                        <Textarea
-                                            id="lateFee"
-                                            placeholder="Escribe aquí los cargos adicionales por retraso..."
-                                            value={profileData.late_fee_policy}
-                                            onChange={(e) =>
-                                                setProfileData({ ...profileData, late_fee_policy: e.target.value })
-                                            }
-                                            className="pl-10 min-h-[100px]"
-                                        />
-                                    </div>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        Este texto aparecerá en letras amarillas cuando el cliente use tu link de registro.
-                                    </p>
                                 </div>
                             </CardContent>
                         </Card>
